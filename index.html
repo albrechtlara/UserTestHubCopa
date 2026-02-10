@@ -1,0 +1,513 @@
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  signInAnonymously, 
+  signInWithCustomToken, 
+  onAuthStateChanged 
+} from 'firebase/auth';
+import { 
+  getFirestore, 
+  collection, 
+  getDocs,
+  doc, 
+  onSnapshot, 
+  runTransaction,
+  serverTimestamp,
+  query,
+  orderBy
+} from 'firebase/firestore';
+import { 
+  Users, 
+  ChevronRight, 
+  CheckCircle2, 
+  ShieldCheck, 
+  Zap, 
+  AlertCircle, 
+  Loader2, 
+  Lock, 
+  BarChart3, 
+  Search, 
+  Rocket, 
+  Table as TableIcon, 
+  Download, 
+  X, 
+  KeyRound 
+} from 'lucide-react';
+
+// --- Lógica de Configuração Dinâmica ---
+// Se __firebase_config estiver disponível (ambiente do Canvas), usamos ela.
+// Caso contrário, usamos a sua configuração manual para o GitHub.
+const getFirebaseConfig = () => {
+  if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+    try {
+      return JSON.parse(__firebase_config);
+    } catch (e) {
+      console.error("Erro ao processar config do ambiente", e);
+    }
+  }
+  return {
+    apiKey: "AIzaSyBKdG3kMCHcgABiDwBiN8yiGbZIei0huqA",
+    authDomain: "hubinc-copadomundo.firebaseapp.com",
+    projectId: "hubinc-copadomundo",
+    storageBucket: "hubinc-copadomundo.firebasestorage.app",
+    messagingSenderId: "769573290056",
+    appId: "1:769573290056:web:9c678855e269aa0c0bd87d",
+    measurementId: "G-7LYLEWN0WG"
+  };
+};
+
+const firebaseConfig = getFirebaseConfig();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// appId para o caminho do Firestore (Mandatório para permissões)
+const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'hub-inc-copa-beta';
+
+const TOTAL_SPOTS = 100;
+const ADMIN_PASSWORD = "011006Ld!";
+
+export default function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [stats, setStats] = useState({ registeredCount: 0 });
+  
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [adminAuthenticated, setAdminAuthenticated] = useState(false);
+  const [adminPassInput, setAdminPassInput] = useState('');
+  const [adminError, setAdminError] = useState('');
+  const [allSignups, setAllSignups] = useState([]);
+  const [fetchingAdmin, setFetchingAdmin] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    fullName: '',
+    workEmail: '',
+    jobTitle: ''
+  });
+
+  // REGRA 3: Autenticação antes de qualquer query
+  useEffect(() => {
+    const initAuth = async () => {
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (err) {
+        console.error("Erro na autenticação:", err);
+        setError("Erro ao conectar com o servidor. Verifique sua conexão.");
+      }
+    };
+    initAuth();
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      if (u) setUser(u);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Monitoramento do Contador de Vagas
+  useEffect(() => {
+    if (!user) return;
+    // REGRA 1: Caminho estrito
+    const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'beta_counter');
+    const unsubscribe = onSnapshot(statsRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setStats(docSnap.data());
+      }
+    }, (err) => {
+      console.error("Erro Firestore (Stats):", err);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const fetchAdminData = async () => {
+    if (!user) return;
+    setFetchingAdmin(true);
+    try {
+      const signupsCol = collection(db, 'artifacts', currentAppId, 'public', 'data', 'signups');
+      const snapshot = await getDocs(signupsCol);
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const sortedData = data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setAllSignups(sortedData);
+    } catch (err) {
+      console.error("Erro Admin Data:", err);
+    } finally {
+      setFetchingAdmin(false);
+    }
+  };
+
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!re.test(email)) return false;
+    const commonFree = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'icloud.com'];
+    const domain = email.split('@')[1]?.toLowerCase();
+    return !commonFree.includes(domain);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    
+    if (!validateEmail(formData.workEmail)) {
+      setError('E-mail pessoal detectado. Use o seu e-mail profissional!');
+      return;
+    }
+
+    if (!user) {
+      setError("Aguardando autenticação segura...");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'beta_counter');
+      const signupsCol = collection(db, 'artifacts', currentAppId, 'public', 'data', 'signups');
+
+      await runTransaction(db, async (transaction) => {
+        const allSignupsSnap = await getDocs(signupsCol);
+        const isDuplicate = allSignupsSnap.docs.some(d => d.data().workEmail.toLowerCase() === formData.workEmail.toLowerCase());
+
+        const statsDoc = await transaction.get(statsRef);
+        const currentCount = statsDoc.exists() ? statsDoc.data().registeredCount : 0;
+
+        if (currentCount >= TOTAL_SPOTS && !isDuplicate) {
+          throw new Error("As 100 vagas oficiais já foram preenchidas.");
+        }
+
+        const newSignupRef = doc(signupsCol);
+        transaction.set(newSignupRef, {
+          ...formData,
+          workEmail: formData.workEmail.toLowerCase(),
+          uid: user.uid,
+          isNewTester: !isDuplicate,
+          createdAt: serverTimestamp()
+        });
+
+        if (!isDuplicate) {
+          transaction.set(statsRef, { registeredCount: currentCount + 1 }, { merge: true });
+        }
+      });
+
+      setSubmitted(true);
+    } catch (err) {
+      setError(err.message || 'Erro no processamento. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAdminAuth = (e) => {
+    e.preventDefault();
+    setAdminError('');
+    if (adminPassInput === ADMIN_PASSWORD) {
+      setAdminAuthenticated(true);
+      fetchAdminData();
+    } else {
+      setAdminError('Senha incorreta.');
+    }
+  };
+
+  const exportToCSV = () => {
+    if (allSignups.length === 0) return;
+    const headers = ["Nome", "Email", "Cargo", "Data"];
+    const rows = allSignups.map(s => [
+      s.fullName, 
+      s.workEmail, 
+      s.jobTitle, 
+      s.createdAt ? new Date(s.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : ''
+    ]);
+    
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n" 
+      + rows.map(e => e.join(",")).join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `beta_testers.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const spotsRemaining = Math.max(0, TOTAL_SPOTS - stats.registeredCount);
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans selection:bg-indigo-500/30">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-900/20 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 blur-[120px] rounded-full" />
+      </div>
+
+      <nav className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <Zap className="text-white w-6 h-6 fill-white" />
+          </div>
+          <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
+            Hub Inc Copa
+          </span>
+        </div>
+      </nav>
+
+      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-12 pb-24 grid lg:grid-cols-2 gap-16 items-center">
+        <div className="animate-in fade-in slide-in-from-left duration-700">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-400 text-xs font-bold uppercase tracking-widest mb-6">
+            <Users className="w-3.5 h-3.5" />
+            Vagas Exclusivas
+          </div>
+          
+          <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8">
+            Chega de "achismos". <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500">
+              Dados reais para quem decide.
+            </span>
+          </h1>
+          
+          <div className="space-y-6 max-w-xl">
+            <p className="text-xl text-gray-200 leading-relaxed font-medium">
+              Estamos liberando o acesso para apenas 100 mentes inquietas testarem o Hub Inc Copa antes de todo o mercado. 
+            </p>
+            <p className="text-lg text-gray-400 leading-relaxed italic border-l-4 border-indigo-500 pl-4 bg-indigo-500/5 py-3 pr-4 rounded-r-xl">
+              "A sua nova central de <strong>consumer & insight content</strong>. Transforme o comportamento do consumidor em estratégia pura de negócio."
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-12">
+            <div className="flex gap-4 items-start p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-indigo-500/30 transition-all group">
+              <div className="mt-1 w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                <Search className="w-5 h-5 text-indigo-400" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-white mb-1">Insights Reais</h4>
+                <p className="text-sm text-gray-500 leading-snug">O que o consumidor quer hoje (e o que vai querer amanhã).</p>
+              </div>
+            </div>
+            <div className="flex gap-4 items-start p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-indigo-500/30 transition-all group">
+              <div className="mt-1 w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                <BarChart3 className="w-5 h-5 text-indigo-400" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-white mb-1">Estratégia Brutal</h4>
+                <p className="text-sm text-gray-500 leading-snug">Dados mastigados para você focar no que importa: crescer.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative group animate-in zoom-in duration-700">
+          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-3xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
+          
+          <div className="relative bg-[#161618] border border-white/10 rounded-3xl p-8 lg:p-10 shadow-2xl backdrop-blur-xl">
+            {!submitted ? (
+              <>
+                <div className="mb-8 text-center sm:text-left">
+                  <div className="flex justify-between items-end mb-4 flex-wrap gap-2">
+                    <h3 className="text-2xl font-bold font-sans">Reserva de Acesso</h3>
+                    <span className="text-indigo-400 font-mono text-sm font-bold flex items-center gap-1.5 px-3 py-1 bg-indigo-500/5 rounded-lg border border-indigo-500/20">
+                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-ping" />
+                      {spotsRemaining} VAGAS LIVRES
+                    </span>
+                  </div>
+                  
+                  <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-indigo-600 via-indigo-400 to-blue-500 transition-all duration-1000 ease-out"
+                      style={{ width: `${(stats.registeredCount / TOTAL_SPOTS) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Nome Completo</label>
+                    <input 
+                      required
+                      type="text"
+                      placeholder="Ex: Ana Silva"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">E-mail Corporativo</label>
+                    <input 
+                      required
+                      type="email"
+                      placeholder="voce@suaempresa.com"
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                      value={formData.workEmail}
+                      onChange={(e) => setFormData({...formData, workEmail: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">O que você faz?</label>
+                    <input 
+                      required
+                      type="text"
+                      placeholder="Ex: CMO, Head de Insights..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                      value={formData.jobTitle}
+                      onChange={(e) => setFormData({...formData, jobTitle: e.target.value})}
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm font-medium">
+                      <AlertCircle className="w-5 h-5 shrink-0" />
+                      <span>{error}</span>
+                    </div>
+                  )}
+
+                  <button 
+                    disabled={loading || !user || (spotsRemaining <= 0 && !submitted)}
+                    className="w-full group/btn relative bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 disabled:from-gray-800 disabled:text-gray-500 text-white font-black py-4 rounded-xl transition-all shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-2 overflow-hidden tracking-widest uppercase text-xs"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        Quero o meu acesso beta agora
+                        <Rocket className="w-5 h-5 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-24 h-24 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-green-500/10">
+                  <Rocket className="w-12 h-12 text-green-500" />
+                </div>
+                <h3 className="text-3xl font-bold mb-4">Lista confirmada!</h3>
+                <p className="text-gray-400 leading-relaxed mb-10 text-lg">
+                  Fala, <strong>{formData.fullName.split(' ')[0]}</strong>! <br /> 
+                  Garantimos o seu lugar na fila. Agora é só verificar o e-mail <strong>{formData.workEmail}</strong>. Vamos entrar em contacto por lá em breve.
+                </p>
+                <button 
+                  onClick={() => setSubmitted(false)}
+                  className="px-8 py-3 bg-white/5 border border-white/10 rounded-full text-gray-300 hover:text-white transition-all font-bold uppercase text-[10px] tracking-widest"
+                >
+                  Voltar ao início
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+
+      {/* Admin Modal */}
+      {showAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 md:p-8 animate-in fade-in duration-300">
+          <div className="bg-[#161618] border border-white/10 rounded-3xl w-full max-w-5xl h-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden relative">
+            <button 
+              onClick={() => {
+                setShowAdmin(false);
+                setAdminAuthenticated(false);
+                setAdminPassInput('');
+              }}
+              className="absolute top-6 right-6 p-2 hover:bg-white/5 rounded-full transition-all z-10"
+            >
+              <X className="w-6 h-6 text-gray-500" />
+            </button>
+
+            {!adminAuthenticated ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto">
+                <div className="w-16 h-16 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center mb-6">
+                  <KeyRound className="w-8 h-8 text-indigo-400" />
+                </div>
+                <h2 className="text-2xl font-bold mb-8 font-sans">Acesso Restrito</h2>
+                <form onSubmit={handleAdminAuth} className="w-full space-y-4">
+                  <input 
+                    autoFocus
+                    type="password"
+                    placeholder="Sua senha"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-center text-xl tracking-[0.5em] text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all font-mono"
+                    value={adminPassInput}
+                    onChange={(e) => setAdminPassInput(e.target.value)}
+                  />
+                  {adminError && <p className="text-red-400 text-xs font-bold">{adminError}</p>}
+                  <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition-all">
+                    Desbloquear
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <>
+                <div className="p-8 border-b border-white/5 flex justify-between items-end bg-white/[0.01]">
+                  <h2 className="text-2xl font-bold font-sans">Base de Testers</h2>
+                  <button onClick={exportToCSV} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold transition-all">
+                    <Download className="w-4 h-4" />
+                    Exportar CSV
+                  </button>
+                </div>
+                <div className="flex-1 overflow-auto p-8">
+                   {fetchingAdmin ? (
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto mt-20" />
+                   ) : (
+                      <table className="w-full text-left border-collapse min-w-[600px]">
+                        <thead>
+                          <tr className="text-[10px] text-gray-500 uppercase tracking-[0.2em] border-b border-white/5">
+                            <th className="py-5 px-4 font-black">Data</th>
+                            <th className="py-5 px-4 font-black">Nome</th>
+                            <th className="py-5 px-4 font-black">Email</th>
+                            <th className="py-5 px-4 font-black">Cargo</th>
+                            <th className="py-5 px-4 font-black">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                          {allSignups.map((s) => (
+                            <tr key={s.id} className="border-b border-white/[0.02] hover:bg-white/[0.01]">
+                              <td className="py-5 px-4 text-gray-500 font-mono text-xs">
+                                {s.createdAt ? new Date(s.createdAt.seconds * 1000).toLocaleDateString() : '-'}
+                              </td>
+                              <td className="py-5 px-4 font-bold text-white">{s.fullName}</td>
+                              <td className="py-5 px-4 text-indigo-300">{s.workEmail}</td>
+                              <td className="py-5 px-4 text-gray-400">{s.jobTitle}</td>
+                              <td className="py-5 px-4">
+                                {s.isNewTester ? (
+                                  <span className="px-2 py-0.5 bg-green-500/10 text-green-500 text-[9px] font-black rounded border border-green-500/20">Válido</span>
+                                ) : (
+                                  <span className="px-2 py-0.5 bg-gray-500/10 text-gray-500 text-[9px] font-black rounded border border-gray-500/20">Dup</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                   )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <footer className="relative z-10 border-t border-white/5 py-10 px-6 bg-[#0a0a0b]/50 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          <p className="text-gray-500 text-xs font-medium">
+            O Hub Inc Copa é um produto da{' '}
+            <a href="https://www.inconvencional.com.br" target="_blank" rel="noopener noreferrer" className="text-white hover:text-indigo-400 font-black underline underline-offset-4">Inconvencional</a>
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-[10px] text-gray-700 font-mono tracking-[0.3em] uppercase">
+              <Lock className="w-3 h-3" />
+              Sessão Blindada
+            </div>
+            <button onClick={() => setShowAdmin(true)} className="p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.08] transition-all group">
+              <TableIcon className="w-3.5 h-3.5 text-gray-700 group-hover:text-indigo-400" />
+            </button>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
