@@ -1,513 +1,439 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInAnonymously, 
-  signInWithCustomToken, 
-  onAuthStateChanged 
-} from 'firebase/auth';
-import { 
-  getFirestore, 
-  collection, 
-  getDocs,
-  doc, 
-  onSnapshot, 
-  runTransaction,
-  serverTimestamp,
-  query,
-  orderBy
-} from 'firebase/firestore';
-import { 
-  Users, 
-  ChevronRight, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Zap, 
-  AlertCircle, 
-  Loader2, 
-  Lock, 
-  BarChart3, 
-  Search, 
-  Rocket, 
-  Table as TableIcon, 
-  Download, 
-  X, 
-  KeyRound 
-} from 'lucide-react';
-
-// --- Lógica de Configuração Dinâmica ---
-// Se __firebase_config estiver disponível (ambiente do Canvas), usamos ela.
-// Caso contrário, usamos a sua configuração manual para o GitHub.
-const getFirebaseConfig = () => {
-  if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-    try {
-      return JSON.parse(__firebase_config);
-    } catch (e) {
-      console.error("Erro ao processar config do ambiente", e);
-    }
-  }
-  return {
-    apiKey: "AIzaSyBKdG3kMCHcgABiDwBiN8yiGbZIei0huqA",
-    authDomain: "hubinc-copadomundo.firebaseapp.com",
-    projectId: "hubinc-copadomundo",
-    storageBucket: "hubinc-copadomundo.firebasestorage.app",
-    messagingSenderId: "769573290056",
-    appId: "1:769573290056:web:9c678855e269aa0c0bd87d",
-    measurementId: "G-7LYLEWN0WG"
-  };
-};
-
-const firebaseConfig = getFirebaseConfig();
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-// appId para o caminho do Firestore (Mandatório para permissões)
-const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'hub-inc-copa-beta';
-
-const TOTAL_SPOTS = 100;
-const ADMIN_PASSWORD = "011006Ld!";
-
-export default function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState('');
-  const [stats, setStats] = useState({ registeredCount: 0 });
-  
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [adminAuthenticated, setAdminAuthenticated] = useState(false);
-  const [adminPassInput, setAdminPassInput] = useState('');
-  const [adminError, setAdminError] = useState('');
-  const [allSignups, setAllSignups] = useState([]);
-  const [fetchingAdmin, setFetchingAdmin] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    fullName: '',
-    workEmail: '',
-    jobTitle: ''
-  });
-
-  // REGRA 3: Autenticação antes de qualquer query
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) {
-        console.error("Erro na autenticação:", err);
-        setError("Erro ao conectar com o servidor. Verifique sua conexão.");
-      }
-    };
-    initAuth();
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      if (u) setUser(u);
-    });
-    return () => unsubscribe();
-  }, []);
-
-  // Monitoramento do Contador de Vagas
-  useEffect(() => {
-    if (!user) return;
-    // REGRA 1: Caminho estrito
-    const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'beta_counter');
-    const unsubscribe = onSnapshot(statsRef, (docSnap) => {
-      if (docSnap.exists()) {
-        setStats(docSnap.data());
-      }
-    }, (err) => {
-      console.error("Erro Firestore (Stats):", err);
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  const fetchAdminData = async () => {
-    if (!user) return;
-    setFetchingAdmin(true);
-    try {
-      const signupsCol = collection(db, 'artifacts', currentAppId, 'public', 'data', 'signups');
-      const snapshot = await getDocs(signupsCol);
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      const sortedData = data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-      setAllSignups(sortedData);
-    } catch (err) {
-      console.error("Erro Admin Data:", err);
-    } finally {
-      setFetchingAdmin(false);
-    }
-  };
-
-  const validateEmail = (email) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!re.test(email)) return false;
-    const commonFree = ['gmail.com', 'outlook.com', 'hotmail.com', 'yahoo.com', 'icloud.com'];
-    const domain = email.split('@')[1]?.toLowerCase();
-    return !commonFree.includes(domain);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hub Inc Copa 2026 - Beta Registration</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <!-- Babel para JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    if (!validateEmail(formData.workEmail)) {
-      setError('E-mail pessoal detectado. Use o seu e-mail profissional!');
-      return;
-    }
-
-    if (!user) {
-      setError("Aguardando autenticação segura...");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'beta_counter');
-      const signupsCol = collection(db, 'artifacts', currentAppId, 'public', 'data', 'signups');
-
-      await runTransaction(db, async (transaction) => {
-        const allSignupsSnap = await getDocs(signupsCol);
-        const isDuplicate = allSignupsSnap.docs.some(d => d.data().workEmail.toLowerCase() === formData.workEmail.toLowerCase());
-
-        const statsDoc = await transaction.get(statsRef);
-        const currentCount = statsDoc.exists() ? statsDoc.data().registeredCount : 0;
-
-        if (currentCount >= TOTAL_SPOTS && !isDuplicate) {
-          throw new Error("As 100 vagas oficiais já foram preenchidas.");
+    <style>
+        @keyframes shimmer { 100% { transform: translateX(100%); } }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .animate-shake { animation: shake 0.4s ease-in-out; }
+        body { background-color: #0a0a0b; margin: 0; overflow-x: hidden; color: white; }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Archivo+Black&display=swap');
+        
+        * { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        .countdown-font {
+            font-family: 'Archivo Black', sans-serif;
+            font-style: italic;
+            color: #d4ff00; /* Verde neon da referência */
+            text-shadow: 0 0 20px rgba(212, 255, 0, 0.3);
         }
 
-        const newSignupRef = doc(signupsCol);
-        transaction.set(newSignupRef, {
-          ...formData,
-          workEmail: formData.workEmail.toLowerCase(),
-          uid: user.uid,
-          isNewTester: !isDuplicate,
-          createdAt: serverTimestamp()
-        });
-
-        if (!isDuplicate) {
-          transaction.set(statsRef, { registeredCount: currentCount + 1 }, { merge: true });
+        .hero-gradient {
+            background: radial-gradient(circle at top right, rgba(79, 70, 229, 0.15), transparent),
+                        radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.1), transparent);
         }
-      });
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-      setSubmitted(true);
-    } catch (err) {
-      setError(err.message || 'Erro no processamento. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  const handleAdminAuth = (e) => {
-    e.preventDefault();
-    setAdminError('');
-    if (adminPassInput === ADMIN_PASSWORD) {
-      setAdminAuthenticated(true);
-      fetchAdminData();
-    } else {
-      setAdminError('Senha incorreta.');
-    }
-  };
+        let firebaseConfig = {
+            apiKey: "AIzaSyBKdG3kMCHcgABiDwBiN8yiGbZIei0huqA",
+            authDomain: "hubinc-copadomundo.firebaseapp.com",
+            projectId: "hubinc-copadomundo",
+            storageBucket: "hubinc-copadomundo.firebasestorage.app",
+            messagingSenderId: "769573290056",
+            appId: "1:769573290056:web:9c678855e269aa0c0bd87d",
+            measurementId: "G-7LYLEWN0WG"
+        };
 
-  const exportToCSV = () => {
-    if (allSignups.length === 0) return;
-    const headers = ["Nome", "Email", "Cargo", "Data"];
-    const rows = allSignups.map(s => [
-      s.fullName, 
-      s.workEmail, 
-      s.jobTitle, 
-      s.createdAt ? new Date(s.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : ''
-    ]);
-    
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n" 
-      + rows.map(e => e.join(",")).join("\n");
-    
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `beta_testers.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+            try { firebaseConfig = JSON.parse(__firebase_config); } catch (e) {}
+        }
 
-  const spotsRemaining = Math.max(0, TOTAL_SPOTS - stats.registeredCount);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'hub-inc-copa-beta';
 
-  return (
-    <div className="min-h-screen bg-[#0a0a0b] text-white font-sans selection:bg-indigo-500/30">
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-900/20 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-900/10 blur-[120px] rounded-full" />
-      </div>
+        window.firebaseApp = { auth, db, currentAppId, signInAnonymously, signInWithCustomToken, onAuthStateChanged, doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp };
+    </script>
 
-      <nav className="relative z-10 max-w-7xl mx-auto px-6 py-8 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Zap className="text-white w-6 h-6 fill-white" />
-          </div>
-          <span className="text-xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">
-            Hub Inc Copa
-          </span>
-        </div>
-      </nav>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-12 pb-24 grid lg:grid-cols-2 gap-16 items-center">
-        <div className="animate-in fade-in slide-in-from-left duration-700">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-400 text-xs font-bold uppercase tracking-widest mb-6">
-            <Users className="w-3.5 h-3.5" />
-            Vagas Exclusivas
-          </div>
-          
-          <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tight leading-[1.1] mb-8">
-            Chega de "achismos". <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500">
-              Dados reais para quem decide.
-            </span>
-          </h1>
-          
-          <div className="space-y-6 max-w-xl">
-            <p className="text-xl text-gray-200 leading-relaxed font-medium">
-              Estamos liberando o acesso para apenas 100 mentes inquietas testarem o Hub Inc Copa antes de todo o mercado. 
-            </p>
-            <p className="text-lg text-gray-400 leading-relaxed italic border-l-4 border-indigo-500 pl-4 bg-indigo-500/5 py-3 pr-4 rounded-r-xl">
-              "A sua nova central de <strong>consumer & insight content</strong>. Transforme o comportamento do consumidor em estratégia pura de negócio."
-            </p>
-          </div>
+        const Icon = ({ name, className = "w-5 h-5" }) => {
+            const icons = {
+                Users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
+                Zap: <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/>,
+                Search: <><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></>,
+                BarChart3: <><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></>,
+                Lock: <><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>,
+                Rocket: <><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.71-2.13.09-2.91a2.18 2.18 0 0 0-3.09-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-5c1.62-2.2 5-3 5-3"/><path d="M12 15v5s3.03-.55 5-2c2.2-1.62 3-5 3-5"/></>,
+                AlertCircle: <><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>,
+                Loader2: <path d="M21 12a9 9 0 1 1-6.21-8.58"/>,
+                CheckCircle2: <><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></>,
+                Table: <><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></>,
+                Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>,
+                X: <><path d="M18 6 6 18"/><path d="M6 6l12 12"/></>,
+                KeyRound: <><path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4c.9.9 2.1 1.4 3.6 1.4a5 5 0 1 0-5-5c0 1.5.5 2.7 1.4 3.6L2 18z"/><circle cx="17" cy="8" r="1"/></>,
+                ChevronRight: <path d="m9 18 6-6-6-6"/>,
+                Trophy: <><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></>
+            };
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icons[name]}
+                </svg>
+            );
+        };
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-12">
-            <div className="flex gap-4 items-start p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-indigo-500/30 transition-all group">
-              <div className="mt-1 w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                <Search className="w-5 h-5 text-indigo-400" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-white mb-1">Insights Reais</h4>
-                <p className="text-sm text-gray-500 leading-snug">O que o consumidor quer hoje (e o que vai querer amanhã).</p>
-              </div>
-            </div>
-            <div className="flex gap-4 items-start p-5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-indigo-500/30 transition-all group">
-              <div className="mt-1 w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
-                <BarChart3 className="w-5 h-5 text-indigo-400" />
-              </div>
-              <div>
-                <h4 className="font-semibold text-white mb-1">Estratégia Brutal</h4>
-                <p className="text-sm text-gray-500 leading-snug">Dados mastigados para você focar no que importa: crescer.</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        const Countdown = () => {
+            const calculateTimeLeft = () => {
+                const worldCupDate = new Date('June 11, 2026 00:00:00').getTime();
+                const now = new Date().getTime();
+                const difference = worldCupDate - now;
 
-        <div className="relative group animate-in zoom-in duration-700">
-          <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-3xl blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-          
-          <div className="relative bg-[#161618] border border-white/10 rounded-3xl p-8 lg:p-10 shadow-2xl backdrop-blur-xl">
-            {!submitted ? (
-              <>
-                <div className="mb-8 text-center sm:text-left">
-                  <div className="flex justify-between items-end mb-4 flex-wrap gap-2">
-                    <h3 className="text-2xl font-bold font-sans">Reserva de Acesso</h3>
-                    <span className="text-indigo-400 font-mono text-sm font-bold flex items-center gap-1.5 px-3 py-1 bg-indigo-500/5 rounded-lg border border-indigo-500/20">
-                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-ping" />
-                      {spotsRemaining} VAGAS LIVRES
-                    </span>
-                  </div>
-                  
-                  <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-gradient-to-r from-indigo-600 via-indigo-400 to-blue-500 transition-all duration-1000 ease-out"
-                      style={{ width: `${(stats.registeredCount / TOTAL_SPOTS) * 100}%` }}
-                    />
-                  </div>
-                </div>
+                let timeLeft = {};
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Nome Completo</label>
-                    <input 
-                      required
-                      type="text"
-                      placeholder="Ex: Ana Silva"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                      value={formData.fullName}
-                      onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                    />
-                  </div>
+                if (difference > 0) {
+                    timeLeft = {
+                        dias: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                        hrs: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                        min: Math.floor((difference / 1000 / 60) % 60),
+                        seg: Math.floor((difference / 1000) % 60),
+                    };
+                }
+                return timeLeft;
+            };
 
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">E-mail Corporativo</label>
-                    <input 
-                      required
-                      type="email"
-                      placeholder="voce@suaempresa.com"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                      value={formData.workEmail}
-                      onChange={(e) => setFormData({...formData, workEmail: e.target.value})}
-                    />
-                  </div>
+            const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">O que você faz?</label>
-                    <input 
-                      required
-                      type="text"
-                      placeholder="Ex: CMO, Head de Insights..."
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
-                      value={formData.jobTitle}
-                      onChange={(e) => setFormData({...formData, jobTitle: e.target.value})}
-                    />
-                  </div>
+            useEffect(() => {
+                const timer = setInterval(() => {
+                    setTimeLeft(calculateTimeLeft());
+                }, 1000);
+                return () => clearInterval(timer);
+            }, []);
 
-                  {error && (
-                    <div className="flex items-start gap-2 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm font-medium">
-                      <AlertCircle className="w-5 h-5 shrink-0" />
-                      <span>{error}</span>
+            return (
+                <div className="flex flex-col items-center">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Icon name="Trophy" className="w-4 h-4 text-yellow-500" />
+                        <span className="text-[10px] md:text-xs font-bold uppercase tracking-[0.3em] text-gray-400">A Copa do Mundo FIFA 2026 começa em</span>
                     </div>
-                  )}
-
-                  <button 
-                    disabled={loading || !user || (spotsRemaining <= 0 && !submitted)}
-                    className="w-full group/btn relative bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 disabled:from-gray-800 disabled:text-gray-500 text-white font-black py-4 rounded-xl transition-all shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-2 overflow-hidden tracking-widest uppercase text-xs"
-                  >
-                    {loading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <>
-                        Quero o meu acesso beta agora
-                        <Rocket className="w-5 h-5 group-hover/btn:translate-x-1 group-hover/btn:-translate-y-1 transition-transform" />
-                      </>
-                    )}
-                  </button>
-                </form>
-              </>
-            ) : (
-              <div className="text-center py-12">
-                <div className="w-24 h-24 bg-green-500/10 border border-green-500/20 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-green-500/10">
-                  <Rocket className="w-12 h-12 text-green-500" />
+                    <div className="flex gap-4 md:gap-8">
+                        {Object.entries(timeLeft).map(([unit, value]) => (
+                            <div key={unit} className="flex flex-col items-center">
+                                <span className="countdown-font text-3xl md:text-5xl lg:text-6xl">
+                                    {String(value).padStart(2, '0')}
+                                    {unit !== 'seg' && <span className="text-gray-700 ml-1 md:ml-3">:</span>}
+                                </span>
+                                <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest text-gray-500 mt-1">{unit}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-4 flex gap-4 text-[8px] md:text-[10px] font-bold text-gray-600 uppercase tracking-[0.2em] border-t border-white/5 pt-3 w-full justify-center">
+                        <span>EUA ★ CANADÁ ★ MÉXICO</span>
+                        <span className="text-indigo-500">|</span>
+                        <span>48 SELEÇÕES</span>
+                        <span className="text-indigo-500">|</span>
+                        <span>104 JOGOS</span>
+                    </div>
                 </div>
-                <h3 className="text-3xl font-bold mb-4">Lista confirmada!</h3>
-                <p className="text-gray-400 leading-relaxed mb-10 text-lg">
-                  Fala, <strong>{formData.fullName.split(' ')[0]}</strong>! <br /> 
-                  Garantimos o seu lugar na fila. Agora é só verificar o e-mail <strong>{formData.workEmail}</strong>. Vamos entrar em contacto por lá em breve.
-                </p>
-                <button 
-                  onClick={() => setSubmitted(false)}
-                  className="px-8 py-3 bg-white/5 border border-white/10 rounded-full text-gray-300 hover:text-white transition-all font-bold uppercase text-[10px] tracking-widest"
-                >
-                  Voltar ao início
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
+            );
+        };
 
-      {/* Admin Modal */}
-      {showAdmin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 md:p-8 animate-in fade-in duration-300">
-          <div className="bg-[#161618] border border-white/10 rounded-3xl w-full max-w-5xl h-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden relative">
-            <button 
-              onClick={() => {
-                setShowAdmin(false);
-                setAdminAuthenticated(false);
-                setAdminPassInput('');
-              }}
-              className="absolute top-6 right-6 p-2 hover:bg-white/5 rounded-full transition-all z-10"
-            >
-              <X className="w-6 h-6 text-gray-500" />
-            </button>
+        function App() {
+            const fb = window.firebaseApp;
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [submitted, setSubmitted] = useState(false);
+            const [error, setError] = useState('');
+            const [stats, setStats] = useState({ registeredCount: 0 });
+            const [showAdmin, setShowAdmin] = useState(false);
+            const [adminAuthenticated, setAdminAuthenticated] = useState(false);
+            const [adminPassInput, setAdminPassInput] = useState('');
+            const [adminError, setAdminError] = useState('');
+            const [allSignups, setAllSignups] = useState([]);
+            const [fetchingAdmin, setFetchingAdmin] = useState(false);
+            const [formData, setFormData] = useState({ fullName: '', workEmail: '', jobTitle: '' });
 
-            {!adminAuthenticated ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto">
-                <div className="w-16 h-16 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center mb-6">
-                  <KeyRound className="w-8 h-8 text-indigo-400" />
-                </div>
-                <h2 className="text-2xl font-bold mb-8 font-sans">Acesso Restrito</h2>
-                <form onSubmit={handleAdminAuth} className="w-full space-y-4">
-                  <input 
-                    autoFocus
-                    type="password"
-                    placeholder="Sua senha"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-center text-xl tracking-[0.5em] text-white focus:ring-2 focus:ring-indigo-500/50 outline-none transition-all font-mono"
-                    value={adminPassInput}
-                    onChange={(e) => setAdminPassInput(e.target.value)}
-                  />
-                  {adminError && <p className="text-red-400 text-xs font-bold">{adminError}</p>}
-                  <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition-all">
-                    Desbloquear
-                  </button>
-                </form>
-              </div>
-            ) : (
-              <>
-                <div className="p-8 border-b border-white/5 flex justify-between items-end bg-white/[0.01]">
-                  <h2 className="text-2xl font-bold font-sans">Base de Testers</h2>
-                  <button onClick={exportToCSV} className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold transition-all">
-                    <Download className="w-4 h-4" />
-                    Exportar CSV
-                  </button>
-                </div>
-                <div className="flex-1 overflow-auto p-8">
-                   {fetchingAdmin ? (
-                      <Loader2 className="w-8 h-8 animate-spin mx-auto mt-20" />
-                   ) : (
-                      <table className="w-full text-left border-collapse min-w-[600px]">
-                        <thead>
-                          <tr className="text-[10px] text-gray-500 uppercase tracking-[0.2em] border-b border-white/5">
-                            <th className="py-5 px-4 font-black">Data</th>
-                            <th className="py-5 px-4 font-black">Nome</th>
-                            <th className="py-5 px-4 font-black">Email</th>
-                            <th className="py-5 px-4 font-black">Cargo</th>
-                            <th className="py-5 px-4 font-black">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="text-sm">
-                          {allSignups.map((s) => (
-                            <tr key={s.id} className="border-b border-white/[0.02] hover:bg-white/[0.01]">
-                              <td className="py-5 px-4 text-gray-500 font-mono text-xs">
-                                {s.createdAt ? new Date(s.createdAt.seconds * 1000).toLocaleDateString() : '-'}
-                              </td>
-                              <td className="py-5 px-4 font-bold text-white">{s.fullName}</td>
-                              <td className="py-5 px-4 text-indigo-300">{s.workEmail}</td>
-                              <td className="py-5 px-4 text-gray-400">{s.jobTitle}</td>
-                              <td className="py-5 px-4">
-                                {s.isNewTester ? (
-                                  <span className="px-2 py-0.5 bg-green-500/10 text-green-500 text-[9px] font-black rounded border border-green-500/20">Válido</span>
+            const TOTAL_SPOTS = 100;
+            const ADMIN_PASSWORD = "011006Ld!";
+
+            useEffect(() => {
+                if (!fb) return;
+                const initAuth = async () => {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await fb.signInWithCustomToken(fb.auth, __initial_auth_token);
+                        } else {
+                            await fb.signInAnonymously(fb.auth);
+                        }
+                    } catch (err) {}
+                };
+                initAuth();
+                const unsubscribe = fb.onAuthStateChanged(fb.auth, setUser);
+                return () => unsubscribe();
+            }, [fb]);
+
+            useEffect(() => {
+                if (!user || !fb) return;
+                const statsRef = fb.doc(fb.db, 'artifacts', fb.currentAppId, 'public', 'data', 'stats', 'beta_counter');
+                const unsubscribe = fb.onSnapshot(statsRef, (docSnap) => {
+                    if (docSnap.exists()) setStats(docSnap.data());
+                });
+                return () => unsubscribe();
+            }, [user, fb]);
+
+            const fetchAdminData = async () => {
+                if (!user || !fb) return;
+                setFetchingAdmin(true);
+                try {
+                    const signupsCol = fb.collection(fb.db, 'artifacts', fb.currentAppId, 'public', 'data', 'signups');
+                    const snapshot = await fb.getDocs(signupsCol);
+                    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setAllSignups(data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+                } catch (err) {}
+                setFetchingAdmin(false);
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                if (!formData.workEmail.includes('@')) {
+                    setError('Insira um e-mail corporativo válido.');
+                    return;
+                }
+                setLoading(true);
+                try {
+                    const statsRef = fb.doc(fb.db, 'artifacts', fb.currentAppId, 'public', 'data', 'stats', 'beta_counter');
+                    const signupsCol = fb.collection(fb.db, 'artifacts', fb.currentAppId, 'public', 'data', 'signups');
+
+                    await fb.runTransaction(fb.db, async (transaction) => {
+                        const allSignupsSnap = await fb.getDocs(signupsCol);
+                        const isDuplicate = allSignupsSnap.docs.some(d => d.data().workEmail.toLowerCase() === formData.workEmail.toLowerCase());
+                        const statsDoc = await transaction.get(statsRef);
+                        const currentCount = statsDoc.exists() ? statsDoc.data().registeredCount : 0;
+                        if (currentCount >= TOTAL_SPOTS && !isDuplicate) throw new Error("O limite de 100 vagas foi atingido.");
+                        transaction.set(fb.doc(signupsCol), { ...formData, workEmail: formData.workEmail.toLowerCase(), createdAt: fb.serverTimestamp(), isNewTester: !isDuplicate });
+                        if (!isDuplicate) transaction.set(statsRef, { registeredCount: currentCount + 1 }, { merge: true });
+                    });
+                    setSubmitted(true);
+                } catch (err) { setError(err.message); }
+                setLoading(false);
+            };
+
+            return (
+                <div className="min-h-screen text-white selection:bg-indigo-500/30 hero-gradient">
+                    {/* Cabeçalho de Destaque com Contador */}
+                    <header className="relative z-20 pt-12 pb-16 px-6 text-center border-b border-white/5 bg-[#0a0a0b]/80 backdrop-blur-md">
+                        <div className="max-w-7xl mx-auto">
+                            <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/30">
+                                        <Icon name="Zap" className="w-8 h-8 text-white fill-white" />
+                                    </div>
+                                    <div className="text-left">
+                                        <span className="text-2xl font-black tracking-tighter uppercase leading-none block">Hub Inc</span>
+                                        <span className="text-indigo-400 font-bold tracking-[0.2em] text-[10px] uppercase">Copa do Mundo 2026</span>
+                                    </div>
+                                </div>
+                                <div className="px-6 py-2 bg-white/5 border border-white/10 rounded-full flex items-center gap-3">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                                    <span className="text-xs font-bold text-gray-300 uppercase tracking-widest">Inscrições Beta Abertas</span>
+                                </div>
+                            </div>
+                            
+                            <Countdown />
+                        </div>
+                    </header>
+
+                    <main className="relative z-10 max-w-7xl mx-auto px-6 pt-16 pb-24 grid lg:grid-cols-2 gap-20 items-center">
+                        <div className="animate-in fade-in duration-1000 slide-in-from-bottom-8">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-400 text-xs font-bold uppercase tracking-widest mb-8">
+                                <Icon name="Users" className="w-3.5 h-3.5" /> Acesso de Pioneiro
+                            </div>
+                            <h2 className="text-5xl lg:text-7xl font-black tracking-tighter leading-[1] mb-10">
+                                Domine os dados da <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-500">maior Copa da história.</span>
+                            </h2>
+                            <p className="text-xl text-gray-300 mb-10 leading-relaxed font-medium">
+                                Estamos abrindo os bastidores para apenas 100 testers. Tenha acesso antecipado à plataforma que vai revolucionar o **consumer & insight content** no maior evento esportivo do planeta.
+                            </p>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all">
+                                    <Icon name="Search" className="text-indigo-400 w-10 h-10 mb-4" />
+                                    <h4 className="font-bold text-lg mb-2">Trend Radar 2026</h4>
+                                    <p className="text-sm text-gray-500">Capture tendências antes mesmo do apito inicial em 2026.</p>
+                                </div>
+                                <div className="p-6 rounded-3xl bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] transition-all">
+                                    <Icon name="BarChart3" className="text-indigo-400 w-10 h-10 mb-4" />
+                                    <h4 className="font-bold text-lg mb-2">Insight Brutal</h4>
+                                    <p className="text-sm text-gray-500">Dados mastigados sobre o comportamento dos fãs pelo mundo.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative group animate-in zoom-in duration-700">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500 to-blue-600 rounded-[2.5rem] blur opacity-25 group-hover:opacity-40 transition"></div>
+                            <div className="relative bg-[#111113] border border-white/10 rounded-[2rem] p-10 lg:p-12 shadow-2xl backdrop-blur-xl">
+                                {!submitted ? (
+                                    <form onSubmit={handleSubmit} className="space-y-6">
+                                        <div>
+                                            <div className="flex justify-between items-end mb-3">
+                                                <h3 className="text-lg font-black uppercase tracking-wider text-indigo-400">Reserva de Beta</h3>
+                                                <span className="font-mono text-sm font-bold text-white px-2 py-1 bg-white/5 rounded italic">{TOTAL_SPOTS - stats.registeredCount} VAGAS LIVRES</span>
+                                            </div>
+                                            <div className="h-2.5 bg-white/5 rounded-full overflow-hidden">
+                                                <div className="h-full bg-gradient-to-r from-indigo-600 to-blue-500 transition-all duration-1000" style={{width: `${(stats.registeredCount/TOTAL_SPOTS)*100}%`}}></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-5">
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-2 mb-2 block">Seu Nome</label>
+                                                <input required placeholder="Ana Silva" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 focus:border-indigo-500 outline-none transition text-white placeholder:text-gray-700 font-bold" onChange={e => setFormData({...formData, fullName: e.target.value})} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-2 mb-2 block">E-mail Corporativo</label>
+                                                <input required type="email" placeholder="voce@empresa.com" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 focus:border-indigo-500 outline-none transition text-white placeholder:text-gray-700 font-bold" onChange={e => setFormData({...formData, workEmail: e.target.value})} />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-2 mb-2 block">O que você faz?</label>
+                                                <input required placeholder="Ex: Diretor de Inovação" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-5 py-4 focus:border-indigo-500 outline-none transition text-white placeholder:text-gray-700 font-bold" onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
+                                            </div>
+                                        </div>
+                                        {error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-sm flex items-center gap-3 animate-shake font-bold"><Icon name="AlertCircle" className="w-5 h-5 shrink-0" />{error}</div>}
+                                        <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all flex items-center justify-center gap-3 shadow-xl shadow-indigo-600/30">
+                                            {loading ? <Icon name="Loader2" className="animate-spin" /> : <><Icon name="Rocket" /> Garantir meu acesso beta agora</>}
+                                        </button>
+                                        <div className="flex items-center justify-center gap-2 text-[10px] text-gray-600 font-bold uppercase tracking-widest pt-2">
+                                            <Icon name="Lock" className="w-3 h-3" /> Segurança de dados Inconvencional
+                                        </div>
+                                    </form>
                                 ) : (
-                                  <span className="px-2 py-0.5 bg-gray-500/10 text-gray-500 text-[9px] font-black rounded border border-gray-500/20">Dup</span>
+                                    <div className="text-center py-16">
+                                        <div className="w-24 h-24 bg-green-500/10 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-green-500/10 border border-green-500/20 animate-bounce">
+                                            <Icon name="CheckCircle2" className="w-12 h-12 text-green-500" />
+                                        </div>
+                                        <h3 className="text-4xl font-black mb-4 uppercase tracking-tighter">Reserva Confirmada!</h3>
+                                        <p className="text-gray-400 mb-10 text-lg leading-relaxed">
+                                            Você está oficialmente na lista dos 100 testers do **Hub Inc Copa**. Fique de olho no seu e-mail corporativo para a ativação.
+                                        </p>
+                                        <button onClick={() => setSubmitted(false)} className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 hover:text-white transition bg-white/5 px-6 py-2 rounded-full">Voltar ao site</button>
+                                    </div>
                                 )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                   )}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+                            </div>
+                        </div>
+                    </main>
 
-      <footer className="relative z-10 border-t border-white/5 py-10 px-6 bg-[#0a0a0b]/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-gray-500 text-xs font-medium">
-            O Hub Inc Copa é um produto da{' '}
-            <a href="https://www.inconvencional.com.br" target="_blank" rel="noopener noreferrer" className="text-white hover:text-indigo-400 font-black underline underline-offset-4">Inconvencional</a>
-          </p>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-[10px] text-gray-700 font-mono tracking-[0.3em] uppercase">
-              <Lock className="w-3 h-3" />
-              Sessão Blindada
-            </div>
-            <button onClick={() => setShowAdmin(true)} className="p-2 rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.08] transition-all group">
-              <TableIcon className="w-3.5 h-3.5 text-gray-700 group-hover:text-indigo-400" />
-            </button>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
-}
+                    <footer className="relative z-10 border-t border-white/5 py-12 px-6 bg-[#0a0a0b]/90">
+                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-8">
+                            <div className="flex flex-col items-center md:items-start">
+                                <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-1">Hub Inc Copa do Mundo 2026</p>
+                                <p className="text-gray-600 text-[10px]">Um produto estratégico criado pela <a href="https://www.inconvencional.com.br" target="_blank" className="text-white font-black underline hover:text-indigo-400">Inconvencional</a></p>
+                            </div>
+                            <div className="flex items-center gap-6">
+                                <span className="text-[9px] text-gray-700 font-mono tracking-[0.4em] uppercase">Built for Pioneers</span>
+                                <button onClick={() => setShowAdmin(true)} className="p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
+                                    <Icon name="Table" className="w-4 h-4 text-gray-700" />
+                                </button>
+                            </div>
+                        </div>
+                    </footer>
+
+                    {showAdmin && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/98 p-4 backdrop-blur-xl animate-in fade-in duration-300">
+                            <div className="bg-[#161618] border border-white/10 rounded-[2.5rem] w-full max-w-5xl h-full max-h-[85vh] flex flex-col relative overflow-hidden shadow-2xl">
+                                <button onClick={() => {setShowAdmin(false); setAdminAuthenticated(false); setAdminPassInput('')}} className="absolute top-8 right-8 p-3 bg-white/5 rounded-full text-gray-500 hover:text-white transition"><Icon name="X" className="w-6 h-6" /></button>
+                                
+                                {!adminAuthenticated ? (
+                                    <div className="p-12 text-center max-w-sm mx-auto w-full flex flex-col h-full justify-center items-center">
+                                        <div className="w-20 h-20 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-8"><Icon name="KeyRound" className="text-indigo-400 w-10 h-10" /></div>
+                                        <h2 className="text-3xl font-black mb-8 uppercase tracking-tight">Painel Admin</h2>
+                                        <form className="w-full" onSubmit={e => {
+                                            e.preventDefault();
+                                            if(adminPassInput === ADMIN_PASSWORD) {
+                                                setAdminAuthenticated(true);
+                                                fetchAdminData();
+                                            } else { setAdminError('Senha incorreta.'); }
+                                        }}>
+                                            <input autoFocus type="password" placeholder="••••••••" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-5 text-center text-3xl tracking-[0.5em] focus:border-indigo-500 outline-none mb-6 font-mono" value={adminPassInput} onChange={e => setAdminPassInput(e.target.value)} />
+                                            {adminError && <p className="text-red-400 text-xs font-black mb-6 uppercase tracking-widest">{adminError}</p>}
+                                            <button className="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-2xl font-black uppercase tracking-widest text-xs">Desbloquear Dados</button>
+                                        </form>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col h-full font-sans">
+                                        <div className="p-10 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+                                            <h2 className="text-2xl font-black uppercase tracking-tight">Testers Cadastrados</h2>
+                                            {allSignups.length > 0 && (
+                                                <button onClick={() => {
+                                                    const csv = "Nome,Email,Cargo\n" + allSignups.map(s => `${s.fullName},${s.workEmail},${s.jobTitle}`).join("\n");
+                                                    const blob = new Blob([csv], { type: 'text/csv' });
+                                                    const url = window.URL.createObjectURL(blob);
+                                                    const a = document.createElement('a');
+                                                    a.setAttribute('href', url);
+                                                    a.setAttribute('download', 'testers_copa_2026.csv');
+                                                    a.click();
+                                                }} className="px-6 py-3 bg-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-xl flex items-center gap-3">
+                                                    <Icon name="Download" className="w-4 h-4" /> Exportar Planilha
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 overflow-auto p-10">
+                                            {fetchingAdmin ? (
+                                                <div className="flex flex-col items-center justify-center h-full gap-4">
+                                                    <Loader2 className="animate-spin text-indigo-500 w-12 h-12" />
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-500">Buscando na base...</span>
+                                                </div>
+                                            ) : (
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-left min-w-[600px]">
+                                                        <thead className="text-gray-500 uppercase text-[10px] font-black tracking-widest border-b border-white/5">
+                                                            <tr>
+                                                                <th className="py-5 px-6">Data</th>
+                                                                <th className="py-5 px-6">Nome</th>
+                                                                <th className="py-5 px-6">E-mail Profissional</th>
+                                                                <th className="py-5 px-6">Cargo</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="text-sm">
+                                                            {allSignups.map(s => (
+                                                                <tr key={s.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
+                                                                    <td className="py-6 px-6 text-gray-500 font-mono text-xs">{s.createdAt ? new Date(s.createdAt.seconds * 1000).toLocaleDateString() : '-'}</td>
+                                                                    <td className="py-6 px-6 font-bold">{s.fullName}</td>
+                                                                    <td className="py-6 px-6 text-indigo-400 font-mono text-xs">{s.workEmail}</td>
+                                                                    <td className="py-6 px-6 text-gray-400">{s.jobTitle}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
