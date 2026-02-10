@@ -1,14 +1,14 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-pt">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HUB INC COPA 2026 - Cadastro Beta</title>
+    <title>HUB INC COPA 2026 - Inscrição Beta</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
     <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
@@ -24,7 +24,7 @@
             color: white; 
         }
 
-        /* Contador em Linha Única - Compacto e Impactante */
+        /* Estilo do Contador em Linha Única - Compacto */
         .countdown-number {
             font-family: 'Archivo Black', sans-serif;
             font-style: italic;
@@ -40,7 +40,7 @@
 
         .hero-gradient {
             background: radial-gradient(circle at top right, rgba(79, 70, 229, 0.15), transparent),
-                        radial-gradient(circle at bottom left, rgba(212, 255, 0, 0.06), transparent);
+                        radial-gradient(circle at bottom left, rgba(212, 255, 0, 0.08), transparent);
         }
 
         @keyframes shake {
@@ -50,28 +50,49 @@
         }
         .animate-shake { animation: shake 0.4s ease-in-out; }
 
-        /* Card de Cadastro - Destaque Máximo */
-        .form-card-glow {
-            box-shadow: 0 0 100px -20px rgba(79, 70, 229, 0.6), 0 0 40px -10px rgba(212, 255, 0, 0.2);
+        /* Card de Inscrição Massivo - Destaque Absoluto */
+        .form-card-main {
+            box-shadow: 0 0 120px -20px rgba(79, 70, 229, 0.6), 0 0 50px -10px rgba(212, 255, 0, 0.2);
             border: 1px solid rgba(255, 255, 255, 0.1);
-            background: rgba(17, 17, 19, 0.8);
-            backdrop-filter: blur(40px);
+            background: rgba(17, 17, 19, 0.9);
+            backdrop-filter: blur(60px);
+        }
+
+        /* Inputs e Botão Ampliados */
+        .input-giant {
+            height: 80px;
+            font-size: 1.1rem;
+            padding: 0 30px;
+            border-radius: 1.5rem;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .input-focus:focus {
             border-color: #d4ff00;
-            background-color: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 0 0 1px #d4ff00;
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 0 4px rgba(212, 255, 0, 0.1);
+            outline: none;
         }
 
-        .btn-gradient {
-            background: linear-gradient(135deg, #4f46e5 0%, #d4ff00 150%);
-            transition: all 0.3s ease;
+        .btn-giant {
+            height: 90px;
+            font-size: 1.1rem;
+            font-weight: 900;
+            letter-spacing: 0.15em;
+            background: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+            box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.5);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border-radius: 2rem;
         }
         
-        .btn-gradient:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px -10px #4f46e5;
+        .btn-giant:hover:not(:disabled) {
+            transform: scale(1.02) translateY(-4px);
+            box-shadow: 0 30px 60px -15px rgba(79, 70, 229, 0.6);
+        }
+
+        .btn-giant:active:not(:disabled) {
+            transform: scale(0.98);
         }
     </style>
 </head>
@@ -79,14 +100,18 @@
     <div id="root"></div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-auth.js";
+        import { getFirestore, doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
 
-        // CONFIGURAÇÃO DINÂMICA (ESSENCIAL PARA FUNCIONAR NO TESTE E GITHUB)
+        // CONFIGURAÇÃO ROBUSTA: Usa variáveis de ambiente se disponíveis, senão fallback para produção
         const getFirebaseConfig = () => {
             if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                return JSON.parse(__firebase_config);
+                try {
+                    return JSON.parse(__firebase_config);
+                } catch (e) {
+                    console.error("Erro ao processar config do ambiente", e);
+                }
             }
             return {
                 apiKey: "AIzaSyBKdG3kMCHcgABiDwBiN8yiGbZIei0huqA",
@@ -104,30 +129,66 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Identificadores para as regras de ambiente
-        const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'hubinc-copadomundo';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'hubinc-copadomundo';
         const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Exportar para o React
         window.fb = { 
-            auth, db, currentAppId, initialToken, 
-            signInAnonymously, signInWithCustomToken, onAuthStateChanged, 
-            doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp 
+            auth, 
+            db, 
+            appId, 
+            initialToken, 
+            signInAnonymously, 
+            signInWithCustomToken, 
+            onAuthStateChanged, 
+            doc, 
+            collection, 
+            getDocs, 
+            onSnapshot, 
+            runTransaction, 
+            serverTimestamp 
         };
     </script>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, Fragment } = React;
 
         const Icon = ({ name, className = "w-5 h-5" }) => {
             const icons = {
                 Zap: <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" fill="currentColor"/>,
-                Trophy: <><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></>,
-                Rocket: <><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.71-2.13.09-2.91a2.18 2.18 0 0 0-3.09-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-5c1.62-2.2 5-3 5-3"/><path d="M12 15v5s3.03-.55 5-2c2.2-1.62 3-5 3-5"/></>,
+                Trophy: (
+                    <Fragment>
+                        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                        <path d="M4 22h16"/>
+                        <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                        <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                        <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+                    </Fragment>
+                ),
+                Rocket: (
+                    <Fragment>
+                        <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.71-2.13.09-2.91a2.18 2.18 0 0 0-3.09-.09z"/>
+                        <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>
+                        <path d="M9 12H4s.55-3.03 2-5c1.62-2.2 5-3 5-3"/>
+                        <path d="M12 15v5s3.03-.55 5-2c2.2-1.62 3-5 3-5"/>
+                    </Fragment>
+                ),
                 Loader2: <path d="M21 12a9 9 0 1 1-6.21-8.58"/>,
-                X: <><path d="M18 6 6 18"/><path d="M6 6l12 12"/></>,
-                Table: <><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></>,
-                Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>,
+                Table: (
+                    <Fragment>
+                        <path d="M3 3h18v18H3z"/>
+                        <path d="M3 9h18"/>
+                        <path d="M3 15h18"/>
+                        <path d="M9 3v18"/>
+                        <path d="M15 3v18"/>
+                    </Fragment>
+                ),
+                X: (
+                    <Fragment>
+                        <path d="M18 6 6 18"/>
+                        <path d="M6 6l12 12"/>
+                    </Fragment>
+                ),
                 Check: <polyline points="20 6 9 17 4 12" />
             };
             return (
@@ -157,14 +218,14 @@
             }, []);
 
             return (
-                <div className="flex items-center gap-3 bg-white/5 px-5 py-2.5 rounded-full border border-white/10 backdrop-blur-md">
-                    <Icon name="Trophy" className="w-4 h-4 text-yellow-500 hidden md:block" />
-                    <div className="flex items-center gap-1.5 sm:gap-3">
+                <div className="flex items-center gap-3 sm:gap-5 bg-white/5 px-6 py-3 rounded-full border border-white/10 backdrop-blur-md">
+                    <Icon name="Trophy" className="w-4 h-4 text-yellow-500 hidden sm:block" />
+                    <div className="flex items-center gap-2 sm:gap-4">
                         {Object.entries(timeLeft).map(([unit, value], idx) => (
-                            <div key={unit} className="flex items-center gap-1">
-                                <span className="countdown-number text-lg md:text-2xl">{String(value).padStart(2, '0')}</span>
-                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-tighter italic">{unit}</span>
-                                {idx < 3 && <span className="text-gray-800 font-bold ml-1">:</span>}
+                            <div key={unit} className="flex items-center gap-1.5">
+                                <span className="countdown-number text-lg md:text-2xl font-black">{String(value).padStart(2, '0')}</span>
+                                <span className="text-[9px] font-black text-gray-500 uppercase italic tracking-tighter">{unit}</span>
+                                {idx < 3 && <span className="text-gray-800 font-bold ml-1 opacity-50">:</span>}
                             </div>
                         ))}
                     </div>
@@ -173,7 +234,7 @@
         };
 
         function App() {
-            const { auth, db, currentAppId, initialToken, signInAnonymously, signInWithCustomToken, onAuthStateChanged, doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp } = window.fb;
+            const { auth, db, appId, initialToken, signInAnonymously, signInWithCustomToken, onAuthStateChanged, doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp } = window.fb;
             
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(false);
@@ -185,9 +246,9 @@
             const [allSignups, setAllSignups] = useState([]);
             const [formData, setFormData] = useState({ fullName: '', workEmail: '', jobTitle: '' });
 
-            // REGRA 3: Autenticação antes de qualquer query
+            // REGRA 3: Autenticação antes de tudo
             useEffect(() => {
-                const initAuth = async () => {
+                const performAuth = async () => {
                     try {
                         if (initialToken) {
                             await signInWithCustomToken(auth, initialToken);
@@ -195,29 +256,34 @@
                             await signInAnonymously(auth);
                         }
                     } catch (err) {
-                        console.error("Auth Erro:", err);
-                        setError("Erro de conexão. Verifique o console.");
+                        console.error("Auth Fail:", err);
+                        setError("Ligação ao servidor pendente...");
                     }
                 };
-                initAuth();
-                const unsubscribe = onAuthStateChanged(auth, setUser);
+                performAuth();
+                const unsubscribe = onAuthStateChanged(auth, (u) => {
+                    if (u) {
+                        setUser(u);
+                        setError('');
+                    }
+                });
                 return () => unsubscribe();
             }, []);
 
-            // REGRA 1: Listener de dados (só após user estar logado)
+            // Carregar contador global
             useEffect(() => {
                 if (!user) return;
-                const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'beta_counter');
+                const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'beta_counter');
                 const unsubscribe = onSnapshot(statsRef, (docSnap) => {
                     if (docSnap.exists()) setStats(docSnap.data());
-                }, (err) => console.error("Firestore Error:", err));
+                }, (err) => console.error("Firestore error:", err));
                 return () => unsubscribe();
             }, [user]);
 
             const fetchAdminData = async () => {
                 if (!user) return;
                 try {
-                    const signupsCol = collection(db, 'artifacts', currentAppId, 'public', 'data', 'signups');
+                    const signupsCol = collection(db, 'artifacts', appId, 'public', 'data', 'signups');
                     const snapshot = await getDocs(signupsCol);
                     const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                     setAllSignups(data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
@@ -226,25 +292,33 @@
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
-                if (!user) { setError("Iniciando conexão segura..."); return; }
+                if (!user) return;
                 setLoading(true);
                 setError('');
                 try {
-                    const signupsCol = collection(db, 'artifacts', currentAppId, 'public', 'data', 'signups');
-                    const statsRef = doc(db, 'artifacts', currentAppId, 'public', 'data', 'stats', 'beta_counter');
+                    const signupsCol = collection(db, 'artifacts', appId, 'public', 'data', 'signups');
+                    const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'beta_counter');
 
-                    // Regra 2: Verificação de duplicados em memória
                     const snap = await getDocs(signupsCol);
                     const isDuplicate = snap.docs.some(d => d.data().workEmail?.toLowerCase() === formData.workEmail.toLowerCase());
 
                     await runTransaction(db, async (transaction) => {
                         const statsDoc = await transaction.get(statsRef);
                         const currentCount = statsDoc.exists() ? statsDoc.data().registeredCount : 0;
-                        if (currentCount >= 100 && !isDuplicate) throw new Error("Vagas 100% preenchidas.");
+                        
+                        if (currentCount >= 100 && !isDuplicate) throw new Error("As 100 vagas foram preenchidas.");
                         
                         const newDocRef = doc(signupsCol);
-                        transaction.set(newDocRef, { ...formData, workEmail: formData.workEmail.toLowerCase(), createdAt: serverTimestamp(), uid: user.uid });
-                        if (!isDuplicate) transaction.set(statsRef, { registeredCount: currentCount + 1 }, { merge: true });
+                        transaction.set(newDocRef, { 
+                            ...formData, 
+                            workEmail: formData.workEmail.toLowerCase(), 
+                            createdAt: serverTimestamp(), 
+                            uid: user.uid 
+                        });
+                        
+                        if (!isDuplicate) {
+                            transaction.set(statsRef, { registeredCount: currentCount + 1 }, { merge: true });
+                        }
                     });
                     setSubmitted(true);
                 } catch (err) { setError(err.message); }
@@ -254,140 +328,121 @@
             return (
                 <div className="min-h-screen text-white selection:bg-[#d4ff00]/30 hero-gradient flex flex-col items-center">
                     
-                    {/* Header Slim - Uma única linha */}
-                    <nav className="w-full max-w-7xl px-6 py-6 flex flex-col md:flex-row justify-between items-center gap-6 z-20">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-600/20">
-                                <Icon name="Zap" className="w-5 h-5 text-white" />
+                    {/* Header Slim - Uma Única Linha */}
+                    <nav className="w-full max-w-7xl px-6 py-8 flex flex-col md:flex-row justify-between items-center gap-6 z-20">
+                        <div className="flex items-center gap-5">
+                            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-600/40">
+                                <Icon name="Zap" className="w-6 h-6 text-white" />
                             </div>
                             <div className="text-left leading-none">
-                                <h1 className="text-lg font-black uppercase italic tracking-tighter">HUB INC COPA</h1>
-                                <span className="neon-text text-[8px] font-black uppercase tracking-[0.4em]">Experience 2026</span>
+                                <h1 className="text-2xl font-black uppercase italic tracking-tighter">HUB INC COPA</h1>
+                                <span className="neon-text text-[10px] font-black uppercase tracking-[0.5em]">Experience 2026</span>
                             </div>
                         </div>
                         <Countdown />
                     </nav>
 
-                    <main className="w-full max-w-5xl px-6 flex flex-col items-center justify-center flex-1 py-6 md:py-12">
+                    <main className="w-full max-w-5xl px-6 flex flex-col items-center justify-center flex-1 py-12 md:py-20">
                         
-                        {/* Texto de Apoio Central */}
-                        <div className="text-center mb-10 md:mb-14 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                            <h2 className="text-4xl md:text-7xl font-black tracking-tighter italic uppercase leading-[0.9] mb-6">
+                        {/* Texto de Apoio */}
+                        <div className="text-center mb-12 md:mb-16 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+                            <h2 className="text-5xl md:text-8xl font-black tracking-tighter italic uppercase leading-[0.8] mb-10">
                                 DOMINE A MAIOR <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-blue-500 to-[#d4ff00]">COPA DA HISTÓRIA.</span>
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-indigo-600 to-[#d4ff00]">COPA DA HISTÓRIA.</span>
                             </h2>
-                            <p className="text-gray-400 text-xs md:text-sm font-black uppercase tracking-[0.3em] opacity-80 max-w-xl mx-auto leading-relaxed">
-                                A sua nova central estratégica de consumer & insight content. <br className="hidden sm:block"/> Selecionando 100 líderes globais para acesso antecipado.
+                            <p className="text-gray-400 text-sm md:text-xl font-black uppercase tracking-[0.4em] opacity-80 max-w-3xl mx-auto leading-relaxed">
+                                Plataforma exclusiva de insights para líderes globais. <br className="hidden sm:block"/> Garanta o seu acesso beta agora.
                             </p>
                         </div>
 
-                        {/* O DESTAQUE: CARD DE CADASTRO */}
-                        <div className="w-full max-w-lg relative group animate-in zoom-in duration-700">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 to-[#d4ff00] rounded-[3.5rem] blur-2xl opacity-30 group-hover:opacity-50 transition duration-1000"></div>
-                            <div className="relative bg-[#111113] rounded-[2.5rem] p-10 md:p-14 form-card-glow overflow-hidden">
+                        {/* FOCO TOTAL: CARD DE INSCRIÇÃO AMPLIADO */}
+                        <div className="w-full max-w-3xl relative group animate-in zoom-in duration-700">
+                            <div className="absolute -inset-4 bg-gradient-to-r from-indigo-600 via-indigo-500 to-[#d4ff00] rounded-[4rem] blur-3xl opacity-30 group-hover:opacity-50 transition duration-1000"></div>
+                            <div className="relative bg-[#111113] rounded-[3.5rem] p-12 md:p-20 form-card-main overflow-hidden border border-white/5 backdrop-blur-3xl">
                                 {!submitted ? (
-                                    <form onSubmit={handleSubmit} className="space-y-8">
-                                        <div className="flex justify-between items-center mb-4">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-full bg-[#d4ff00] animate-pulse"></div>
-                                                <h3 className="text-sm font-black uppercase tracking-widest italic text-white">Reserva de Vaga</h3>
+                                    <form onSubmit={handleSubmit} className="space-y-12">
+                                        <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-4 h-4 rounded-full bg-[#d4ff00] animate-pulse shadow-[0_0_20px_#d4ff00]"></div>
+                                                <h3 className="text-2xl font-black uppercase tracking-widest italic text-white">RESERVA BETA</h3>
                                             </div>
-                                            <span className="font-mono text-[10px] font-bold text-[#d4ff00] px-3 py-1 bg-[#d4ff00]/10 rounded-full border border-[#d4ff00]/20 italic">
-                                                {100 - stats.registeredCount} DISPONÍVEIS
+                                            <span className="font-mono text-sm font-bold text-[#d4ff00] px-6 py-2.5 bg-[#d4ff00]/10 rounded-2xl border border-[#d4ff00]/20 italic shadow-inner">
+                                                {100 - stats.registeredCount} VAGAS LIVRES
                                             </span>
                                         </div>
                                         
-                                        <div className="space-y-5">
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em] ml-3">Nome Completo</label>
-                                                <input required placeholder="EX: ANA SILVA" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4.5 focus:outline-none input-focus transition font-bold uppercase text-xs placeholder:text-gray-800" onChange={e => setFormData({...formData, fullName: e.target.value})} />
+                                        <div className="space-y-6">
+                                            <div className="space-y-2">
+                                                <label className="text-[11px] font-black uppercase text-gray-500 tracking-[0.4em] ml-5">NOME COMPLETO</label>
+                                                <input required placeholder="EX: ANA SILVA" className="w-full input-giant focus:outline-none input-focus transition font-black uppercase text-white" onChange={e => setFormData({...formData, fullName: e.target.value})} />
                                             </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em] ml-3">E-mail Corporativo</label>
-                                                <input required type="email" placeholder="VOCE@EMPRESA.COM" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4.5 focus:outline-none input-focus transition font-bold uppercase text-xs placeholder:text-gray-800" onChange={e => setFormData({...formData, workEmail: e.target.value})} />
+                                            <div className="space-y-2">
+                                                <label className="text-[11px] font-black uppercase text-gray-500 tracking-[0.4em] ml-5">E-MAIL PROFISSIONAL</label>
+                                                <input required type="email" placeholder="VOCE@EMPRESA.COM" className="w-full input-giant focus:outline-none input-focus transition font-black uppercase text-white" onChange={e => setFormData({...formData, workEmail: e.target.value})} />
                                             </div>
-                                            <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em] ml-3">Cargo / Função</label>
-                                                <input required placeholder="EX: HEAD DE INSIGHTS" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-4.5 focus:outline-none input-focus transition font-bold uppercase text-xs placeholder:text-gray-800" onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
+                                            <div className="space-y-2">
+                                                <label className="text-[11px] font-black uppercase text-gray-500 tracking-[0.4em] ml-5">CARGO / FUNÇÃO</label>
+                                                <input required placeholder="EX: HEAD DE INSIGHTS" className="w-full input-giant focus:outline-none input-focus transition font-black uppercase text-white" onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
                                             </div>
                                         </div>
 
-                                        {error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-[10px] font-black animate-shake text-center uppercase tracking-widest">{error}</div>}
+                                        {error && <div className="p-6 bg-red-500/10 border border-red-500/20 rounded-3xl text-red-400 text-xs font-black animate-shake text-center uppercase tracking-[0.2em]">{error}</div>}
                                         
-                                        <button disabled={loading || !user} className="w-full btn-gradient py-5.5 rounded-2xl font-black uppercase tracking-[0.3em] text-[11px] text-white flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] disabled:opacity-30">
-                                            {loading ? <Icon name="Loader2" className="animate-spin" /> : <><Icon name="Rocket" className="w-4 h-4" /> QUERO MEU ACESSO BETA</>}
+                                        <button disabled={loading || !user} className="w-full btn-giant uppercase text-white flex items-center justify-center gap-5 disabled:opacity-40">
+                                            {loading ? <Icon name="Loader2" className="animate-spin w-8 h-8" /> : <Fragment><Icon name="Rocket" className="w-6 h-6" /> GARANTIR MEU ACESSO BETA AGORA</Fragment>}
                                         </button>
                                         
-                                        {!user && <p className="text-[9px] text-center text-[#d4ff00] animate-pulse font-black uppercase tracking-widest italic opacity-60">Sincronizando banco de dados...</p>}
+                                        {!user && <p className="text-xs text-center text-[#d4ff00] animate-pulse font-black uppercase tracking-[0.4em] italic opacity-60">Sincronizando banco de dados...</p>}
                                     </form>
                                 ) : (
-                                    <div className="text-center py-12 animate-in zoom-in duration-700">
-                                        <div className="w-24 h-24 bg-[#d4ff00]/10 rounded-[2.5rem] flex items-center justify-center mx-auto mb-10 border border-[#d4ff00]/20 shadow-2xl shadow-[#d4ff00]/20"><Icon name="Check" className="w-10 h-10 text-[#d4ff00]" /></div>
-                                        <h3 className="text-4xl font-black mb-6 uppercase tracking-tighter italic">RESERVA FEITA!</h3>
-                                        <p className="text-gray-400 text-base leading-relaxed mb-12 opacity-90 font-medium">Você garantiu sua vaga entre os 100 líderes da Copa 2026. <br/> Verifique o seu e-mail corporativo em breve.</p>
-                                        <button onClick={() => setSubmitted(false)} className="text-[10px] font-black uppercase tracking-[0.5em] text-[#d4ff00] hover:text-white transition bg-white/5 px-12 py-4 rounded-full border border-white/10">Novo cadastro</button>
+                                    <div className="text-center py-16 animate-in zoom-in duration-700">
+                                        <div className="w-32 h-32 bg-[#d4ff00]/10 rounded-[3.5rem] flex items-center justify-center mx-auto mb-12 border border-[#d4ff00]/20 shadow-[0_0_50px_rgba(212,255,0,0.2)]"><Icon name="Check" className="w-16 h-16 text-[#d4ff00]" /></div>
+                                        <h3 className="text-6xl font-black mb-8 uppercase tracking-tighter italic text-white">RESERVA FEITA!</h3>
+                                        <p className="text-gray-400 text-2xl leading-relaxed mb-16 opacity-90 font-medium">Parabéns! Garantiu a sua posição entre os 100 líderes da Copa 2026. <br/> Verifique o seu e-mail corporativo em breve.</p>
+                                        <button onClick={() => setSubmitted(false)} className="text-[11px] font-black uppercase tracking-[0.6em] text-[#d4ff00] hover:text-white transition bg-white/5 px-16 py-6 rounded-full border border-white/10">Fazer novo cadastro</button>
                                     </div>
                                 )}
                             </div>
                         </div>
-
-                        {/* Badges de Confiança */}
-                        <div className="flex flex-wrap justify-center gap-10 mt-16 opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
-                            <div className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-[#d4ff00]"></div><span className="text-[10px] font-black uppercase tracking-widest">Global Insights</span></div>
-                            <div className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-[#d4ff00]"></div><span className="text-[10px] font-black uppercase tracking-widest">Market Strategy</span></div>
-                            <div className="flex items-center gap-3"><div className="w-1.5 h-1.5 rounded-full bg-[#d4ff00]"></div><span className="text-[10px] font-black uppercase tracking-widest">2026 Ready</span></div>
-                        </div>
                     </main>
 
-                    <footer className="w-full max-w-7xl px-6 py-10 flex flex-col md:flex-row justify-between items-center gap-8 border-t border-white/5 mt-auto z-20">
-                        <div className="flex flex-col items-center md:items-start gap-1">
-                            <p className="text-gray-600 text-[10px] font-black uppercase tracking-[0.4em] italic text-center md:text-left">
+                    <footer className="w-full max-w-7xl px-6 py-16 flex flex-col md:flex-row justify-between items-center gap-10 border-t border-white/5 mt-auto z-20">
+                        <div className="flex flex-col items-center md:items-start gap-2">
+                            <p className="text-gray-600 text-[11px] font-black uppercase tracking-[0.5em] italic text-center md:text-left">
                                 HUB INC COPA É UM PRODUTO <a href="https://www.inconvencional.com.br" target="_blank" className="text-white hover:text-[#d4ff00] underline decoration-indigo-500/50 transition-all">INCONVENCIONAL</a>
                             </p>
-                            <p className="text-gray-800 text-[9px] font-bold uppercase tracking-[0.2em]">© 2026 - Todos os direitos estratégicos reservados</p>
+                            <p className="text-gray-800 text-[10px] font-bold uppercase tracking-[0.3em]">© 2026 - Inteligência Comportamental</p>
                         </div>
-                        <div className="flex items-center gap-8">
-                            <span className="text-[10px] text-gray-800 font-mono tracking-widest uppercase italic font-bold">Born to Lead</span>
-                            <button onClick={() => { setShowAdmin(true); fetchAdminData(); }} className="p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 transition-all group">
-                                <Icon name="Table" className="w-5 h-5 text-gray-700 group-hover:text-indigo-400" />
-                            </button>
-                        </div>
+                        <button onClick={() => { setShowAdmin(true); fetchAdminData(); }} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all group">
+                            <Icon name="Table" className="w-6 h-6 text-gray-700 group-hover:text-indigo-400" />
+                        </button>
                     </footer>
 
                     {/* Admin Modal */}
                     {showAdmin && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/98 p-4 backdrop-blur-3xl animate-in fade-in duration-300">
-                            <div className="bg-[#161618] border border-white/10 rounded-[3rem] w-full max-w-4xl h-[75vh] flex flex-col relative shadow-2xl overflow-hidden">
-                                <button onClick={() => {setShowAdmin(false); setAdminAuthenticated(false);}} className="absolute top-10 right-10 p-4 bg-white/5 rounded-full text-gray-500 hover:text-white transition z-50"><Icon name="X" className="w-6 h-6" /></button>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/98 p-6 backdrop-blur-3xl animate-in fade-in duration-300">
+                            <div className="bg-[#161618] border border-white/10 rounded-[4rem] w-full max-w-6xl h-[85vh] flex flex-col relative shadow-[0_0_100px_rgba(0,0,0,0.9)] overflow-hidden">
+                                <button onClick={() => {setShowAdmin(false); setAdminAuthenticated(false);}} className="absolute top-12 right-12 p-5 bg-white/5 rounded-full text-gray-500 hover:text-white transition z-50"><Icon name="X" className="w-8 h-8" /></button>
                                 {!adminAuthenticated ? (
-                                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center max-w-sm mx-auto w-full">
-                                        <h2 className="text-3xl font-black mb-10 uppercase italic text-white tracking-tighter">PAINEL ADMIN</h2>
-                                        <input autoFocus type="password" placeholder="SENHA" className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-8 text-center text-5xl tracking-[0.5em] focus:border-indigo-500 outline-none font-mono mb-10" onKeyDown={e => {if(e.key==='Enter' && e.target.value==='011006Ld!'){setAdminAuthenticated(true); fetchAdminData()}}} />
-                                        <button className="w-full bg-indigo-600 py-6 rounded-2xl font-black uppercase text-[11px] tracking-widest" onClick={() => {if(document.querySelector('input[type="password"]').value==='011006Ld!'){setAdminAuthenticated(true); fetchAdminData()}}}>DESBLOQUEAR ACESSO</button>
+                                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center max-w-md mx-auto w-full">
+                                        <h2 className="text-5xl font-black mb-14 uppercase italic text-white tracking-tighter">PAINEL ADMIN</h2>
+                                        <input autoFocus type="password" placeholder="SENHA" className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] px-10 py-12 text-center text-6xl tracking-[0.5em] focus:border-indigo-500 outline-none font-mono mb-14" onKeyDown={e => {if(e.key==='Enter' && e.target.value==='011006Ld!'){setAdminAuthenticated(true); fetchAdminData(); }}} />
+                                        <button className="w-full bg-indigo-600 py-10 rounded-[2.5rem] font-black uppercase text-sm tracking-[0.4em]" onClick={() => {if(document.querySelector('input[type="password"]').value==='011006Ld!'){setAdminAuthenticated(true); fetchAdminData();}}}>ACEDER À BASE</button>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col h-full font-sans p-12">
-                                        <div className="flex justify-between items-center mb-10">
-                                            <h2 className="text-2xl font-black uppercase italic tracking-widest text-indigo-400">PIONEIROS CADASTRADOS</h2>
-                                            <button onClick={() => {
-                                                const csv = "\uFEFFData,Nome,Email,Cargo\n" + allSignups.map(s => `${s.createdAt?new Date(s.createdAt.seconds*1000).toLocaleDateString():''},"${s.fullName}","${s.workEmail}","${s.jobTitle}"`).join("\n");
-                                                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                                                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'pioneiros_hub_inc.csv'; a.click();
-                                            }} className="px-8 py-4 bg-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-2xl flex items-center gap-3 shadow-lg">
-                                                <Icon name="Download" className="w-4 h-4" /> EXPORTAR CSV
-                                            </button>
-                                        </div>
-                                        <div className="flex-1 overflow-auto rounded-[2rem] border border-white/5">
+                                    <div className="flex flex-col h-full font-sans p-16">
+                                        <h2 className="text-4xl font-black uppercase italic tracking-tighter text-indigo-400 mb-16">PIONEIROS ATIVOS</h2>
+                                        <div className="flex-1 overflow-auto rounded-[3.5rem] border border-white/5 bg-white/[0.01]">
                                             <table className="w-full text-left">
-                                                <thead className="bg-white/[0.03] text-gray-500 text-[10px] font-black uppercase tracking-widest">
-                                                    <tr><th className="py-6 px-8 italic">NOME COMPLETO</th><th className="py-6 px-8 italic">E-MAIL</th><th className="py-6 px-8 italic">CARGO</th></tr>
+                                                <thead className="bg-white/[0.05] text-gray-500 text-[12px] font-black uppercase tracking-[0.4em] border-b border-white/5">
+                                                    <tr><th className="py-10 px-14 italic">NOME COMPLETO</th><th className="py-10 px-14 italic">E-MAIL</th><th className="py-10 px-14 italic">CARGO</th></tr>
                                                 </thead>
-                                                <tbody className="text-xs">
+                                                <tbody className="text-base font-bold">
                                                     {allSignups.map(s => (
                                                         <tr key={s.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
-                                                            <td className="py-6 px-8 font-black uppercase text-white">{s.fullName}</td>
-                                                            <td className="py-6 px-8 neon-text font-bold italic">{s.workEmail}</td>
-                                                            <td className="py-6 px-8 text-gray-400 font-medium uppercase tracking-tighter">{s.jobTitle}</td>
+                                                            <td className="py-10 px-14 uppercase text-white tracking-widest">{s.fullName}</td>
+                                                            <td className="py-10 px-14 neon-text italic text-sm">{s.workEmail}</td>
+                                                            <td className="py-10 px-14 text-gray-400 uppercase text-xs tracking-widest">{s.jobTitle}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
