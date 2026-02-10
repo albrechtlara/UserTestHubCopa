@@ -24,24 +24,23 @@
             color: white; 
         }
 
-        /* ESTILO DA REFERÊNCIA: VERDE NEON, ITÁLICO E IMPACTO TOTAL */
+        /* Estilo do Contador Reduzido para uma linha */
         .countdown-number {
             font-family: 'Archivo Black', sans-serif;
             font-style: italic;
-            color: #d4ff00; /* Verde Neon */
-            line-height: 0.8;
-            text-shadow: 0 0 50px rgba(212, 255, 0, 0.35);
-            letter-spacing: -0.02em;
+            color: #d4ff00;
+            line-height: 1;
+            text-shadow: 0 0 20px rgba(212, 255, 0, 0.3);
         }
 
         .neon-text {
             color: #d4ff00;
-            text-shadow: 0 0 15px rgba(212, 255, 0, 0.5);
+            text-shadow: 0 0 10px rgba(212, 255, 0, 0.4);
         }
 
         .hero-gradient {
-            background: radial-gradient(circle at top right, rgba(79, 70, 229, 0.15), transparent),
-                        radial-gradient(circle at bottom left, rgba(212, 255, 0, 0.08), transparent);
+            background: radial-gradient(circle at top right, rgba(79, 70, 229, 0.12), transparent),
+                        radial-gradient(circle at bottom left, rgba(212, 255, 0, 0.05), transparent);
         }
 
         @keyframes shake {
@@ -51,9 +50,9 @@
         }
         .animate-shake { animation: shake 0.4s ease-in-out; }
 
-        .admin-modal {
-            backdrop-filter: blur(20px);
-            background-color: rgba(10, 10, 11, 0.95);
+        /* Destaque para o Card de Cadastro */
+        .form-card-glow {
+            box-shadow: 0 0 50px -12px rgba(79, 70, 229, 0.5);
         }
     </style>
 </head>
@@ -63,15 +62,14 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp, setDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // LÓGICA DE PROTEÇÃO CONTRA ERRO DE API KEY
         const getFirebaseConfig = () => {
-            // Prioridade 1: Configuração do ambiente de Preview (Canvas)
+            // Se estiver no ambiente de teste do Canvas
             if (typeof __firebase_config !== 'undefined' && __firebase_config) {
                 return JSON.parse(__firebase_config);
             }
-            // Prioridade 2: Suas chaves pessoais (Para o GitHub)
+            // Se estiver no GitHub Pages ou local
             return {
                 apiKey: "AIzaSyBKdG3kMCHcgABiDwBiN8yiGbZIei0huqA",
                 authDomain: "hubinc-copadomundo.firebaseapp.com",
@@ -88,22 +86,19 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         
-        // Regra de caminhos estritos para evitar erros de permissão
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'hubinc-copadomundo';
         const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        // Disponibiliza para o React
         window.fb = { 
             auth, db, appId, initialToken, 
             signInAnonymously, signInWithCustomToken, onAuthStateChanged, 
-            doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp, setDoc 
+            doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp, setDoc, query 
         };
     </script>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // Componente de Ícones SVG fixos
         const Icon = ({ name, className = "w-5 h-5" }) => {
             const icons = {
                 Users: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></>,
@@ -129,12 +124,12 @@
                 const worldCupDate = new Date('June 11, 2026 00:00:00').getTime();
                 const now = new Date().getTime();
                 const diff = worldCupDate - now;
-                if (diff <= 0) return { dias: 0, hrs: 0, min: 0, seg: 0 };
+                if (diff <= 0) return { d: 0, h: 0, m: 0, s: 0 };
                 return {
-                    dias: Math.floor(diff / (1000 * 60 * 60 * 24)),
-                    hrs: Math.floor((diff / (1000 * 60 * 60)) % 24),
-                    min: Math.floor((diff / 1000 / 60) % 60),
-                    seg: Math.floor((diff / 1000) % 60)
+                    d: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                    h: Math.floor((diff / (1000 * 60 * 60)) % 24),
+                    m: Math.floor((diff / 1000 / 60) % 60),
+                    s: Math.floor((diff / 1000) % 60)
                 };
             };
             const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
@@ -143,24 +138,20 @@
                 return () => clearInterval(timer);
             }, []);
             return (
-                <div className="flex flex-col items-center w-full">
-                    <div className="flex items-center gap-2 mb-10 opacity-70">
-                        <Icon name="Trophy" className="w-5 h-5 text-yellow-500" />
-                        <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.6em] text-gray-400">Road to World Cup 2026</span>
+                <div className="flex items-center justify-center gap-3 sm:gap-6 bg-white/[0.03] px-6 py-3 rounded-full border border-white/5 backdrop-blur-sm">
+                    <div className="flex items-center gap-2 pr-2 border-r border-white/10 hidden sm:flex">
+                        <Icon name="Trophy" className="w-4 h-4 text-yellow-500" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-gray-500">Copa 2026</span>
                     </div>
-                    <div className="flex flex-wrap justify-center gap-4 md:gap-12 w-full">
-                        {Object.entries(timeLeft).map(([unit, value], idx) => (
-                            <React.Fragment key={unit}>
-                                <div className="flex flex-col items-center">
-                                    <span className="countdown-number text-6xl sm:text-8xl md:text-9xl lg:text-[11rem]">
-                                        {String(value).padStart(2, '0')}
-                                    </span>
-                                    <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-gray-600 mt-6 italic">{unit}</span>
-                                </div>
-                                {idx < 3 && <div className="hidden lg:block text-gray-800 text-6xl self-center mt-[-40px] font-black opacity-30">:</div>}
-                            </React.Fragment>
-                        ))}
-                    </div>
+                    {Object.entries(timeLeft).map(([unit, value], idx) => (
+                        <div key={unit} className="flex items-center gap-1 sm:gap-2">
+                            <span className="countdown-number text-xl sm:text-2xl md:text-3xl">
+                                {String(value).padStart(2, '0')}
+                            </span>
+                            <span className="text-[8px] font-black uppercase text-gray-600 italic">{unit}</span>
+                            {idx < 3 && <span className="text-gray-800 font-black ml-1 sm:ml-2">:</span>}
+                        </div>
+                    ))}
                 </div>
             );
         };
@@ -180,7 +171,6 @@
             const [fetchingAdmin, setFetchingAdmin] = useState(false);
             const [formData, setFormData] = useState({ fullName: '', workEmail: '', jobTitle: '' });
 
-            // REGRA 3: Autenticação prioritária
             useEffect(() => {
                 const performAuth = async () => {
                     try {
@@ -191,20 +181,16 @@
                         }
                     } catch (err) {
                         console.error("Auth Error:", err);
-                        setError("Falha crítica de autenticação. Recarregue.");
+                        setError("Erro de autenticação no GitHub. Verifique os Domínios Autorizados no Firebase.");
                     }
                 };
                 performAuth();
                 const unsubscribe = onAuthStateChanged(auth, (u) => {
-                    if (u) {
-                        setUser(u);
-                        setError('');
-                    }
+                    if (u) { setUser(u); setError(''); }
                 });
                 return () => unsubscribe();
             }, []);
 
-            // REGRA 1: Listener de dados em tempo real
             useEffect(() => {
                 if (!user) return;
                 const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'beta_counter');
@@ -235,27 +221,17 @@
                     const signupsCol = collection(db, 'artifacts', appId, 'public', 'data', 'signups');
                     const statsRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', 'beta_counter');
 
-                    // Regra 2: Filtragem em memória
                     const snap = await getDocs(signupsCol);
                     const isDuplicate = snap.docs.some(d => d.data().workEmail?.toLowerCase() === formData.workEmail.toLowerCase());
 
                     await runTransaction(db, async (transaction) => {
                         const statsDoc = await transaction.get(statsRef);
                         const currentCount = statsDoc.exists() ? statsDoc.data().registeredCount : 0;
-                        if (currentCount >= 100 && !isDuplicate) throw new Error("Atingimos o limite de 100 pioneiros.");
+                        if (currentCount >= 100 && !isDuplicate) throw new Error("Vagas 100% preenchidas.");
                         
                         const newDocRef = doc(signupsCol);
-                        transaction.set(newDocRef, { 
-                            ...formData, 
-                            workEmail: formData.workEmail.toLowerCase(), 
-                            createdAt: serverTimestamp(), 
-                            isNewTester: !isDuplicate,
-                            uid: user.uid
-                        });
-                        
-                        if (!isDuplicate) {
-                            transaction.set(statsRef, { registeredCount: currentCount + 1 }, { merge: true });
-                        }
+                        transaction.set(newDocRef, { ...formData, workEmail: formData.workEmail.toLowerCase(), createdAt: serverTimestamp(), isNewTester: !isDuplicate, uid: user.uid });
+                        if (!isDuplicate) transaction.set(statsRef, { registeredCount: currentCount + 1 }, { merge: true });
                     });
                     setSubmitted(true);
                 } catch (err) { setError(err.message); }
@@ -263,161 +239,142 @@
             };
 
             return (
-                <div className="min-h-screen text-white selection:bg-[#d4ff00]/30 hero-gradient pb-20">
-                    <header className="relative z-20 pt-16 pb-28 px-6 text-center border-b border-white/5 bg-[#0a0a0b]/60 backdrop-blur-xl">
-                        <div className="max-w-7xl mx-auto flex flex-col items-center">
-                            <div className="flex items-center gap-6 mb-24 animate-in fade-in zoom-in duration-1000">
-                                <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/40">
-                                    <Icon name="Zap" className="w-10 h-10 text-white" />
-                                </div>
-                                <div className="text-left">
-                                    <h1 className="text-4xl font-black tracking-tighter uppercase leading-none italic">HUB INC COPA</h1>
-                                    <span className="neon-text font-black tracking-[0.6em] text-[10px] uppercase">Experience 2026</span>
-                                </div>
+                <div className="min-h-screen text-white selection:bg-[#d4ff00]/30 hero-gradient flex flex-col items-center">
+                    {/* Header Minimalista para Focar no Form */}
+                    <nav className="w-full max-w-7xl px-6 py-8 flex flex-col md:flex-row justify-between items-center gap-6 z-20">
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+                                <Icon name="Zap" className="w-6 h-6 text-white" />
                             </div>
-                            <Countdown />
-                            <div className="mt-20 flex flex-wrap justify-center gap-8 text-[11px] font-black text-gray-400 uppercase tracking-[0.5em] bg-white/[0.03] px-12 py-5 rounded-full border border-white/5 italic">
-                                <span>EUA ★ CANADÁ ★ MÉXICO</span>
-                                <span className="hidden md:inline text-indigo-500 font-normal">|</span>
-                                <span>48 SELEÇÕES</span>
-                                <span className="hidden md:inline text-indigo-500 font-normal">|</span>
-                                <span>104 JOGOS</span>
+                            <div className="text-left leading-none">
+                                <h1 className="text-xl font-black uppercase italic tracking-tighter">HUB INC COPA</h1>
+                                <span className="neon-text text-[9px] font-black uppercase tracking-[0.4em]">Experience 2026</span>
                             </div>
                         </div>
-                    </header>
+                        <Countdown />
+                    </nav>
 
-                    <main className="max-w-7xl mx-auto px-6 pt-32 grid lg:grid-cols-2 gap-24 items-center">
-                        <div className="animate-in fade-in slide-in-from-left duration-1000">
-                            <h2 className="text-7xl lg:text-9xl font-black tracking-tighter leading-[0.8] mb-14 italic">
-                                DOMINE A MAIOR <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-blue-500 to-[#d4ff00]">COPA DO MUNDO.</span>
+                    <main className="w-full max-w-5xl px-6 flex flex-col items-center justify-center flex-1 py-10">
+                        {/* Título de Apoio */}
+                        <div className="text-center mb-12 animate-in fade-in duration-1000">
+                            <h2 className="text-4xl md:text-6xl font-black tracking-tighter italic uppercase leading-none mb-6">
+                                DOMINE A MAIOR <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-[#d4ff00]">COPA DO MUNDO.</span>
                             </h2>
-                            <p className="text-2xl text-gray-400 mb-16 leading-relaxed max-w-lg font-medium italic opacity-80">
-                                "Estamos a libertar o acesso para apenas **100 líderes**. A inteligência definitiva sobre o maior evento do planeta."
+                            <p className="text-gray-400 text-sm md:text-lg max-w-2xl mx-auto font-medium">
+                                Estamos selecionando apenas 100 líderes para acessar a inteligência definitiva sobre consumo no maior evento do planeta.
                             </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-                                <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 flex gap-6 transition-all hover:border-indigo-500/40">
-                                    <Icon name="Search" className="text-indigo-400 w-14 h-14 shrink-0" />
-                                    <div><h4 className="font-black italic text-white uppercase text-lg">Trend Radar</h4><p className="text-xs text-gray-500 font-bold mt-2 tracking-widest uppercase">Insights em tempo real.</p></div>
-                                </div>
-                                <div className="p-10 rounded-[3rem] bg-white/[0.02] border border-white/5 flex gap-6 transition-all hover:border-[#d4ff00]/40">
-                                    <Icon name="BarChart3" className="neon-text w-14 h-14 shrink-0" />
-                                    <div><h4 className="font-black italic text-white uppercase text-lg">Analytics</h4><p className="text-xs text-gray-500 font-bold mt-2 tracking-widest uppercase">Conversão estratégica.</p></div>
-                                </div>
-                            </div>
                         </div>
 
-                        <div className="relative group">
-                            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 to-[#d4ff00] rounded-[4rem] blur-2xl opacity-20 group-hover:opacity-35 transition duration-1000"></div>
-                            <div className="relative bg-[#111113]/90 border border-white/10 rounded-[3.5rem] p-12 lg:p-20 shadow-2xl backdrop-blur-3xl">
+                        {/* O DESTAQUE: CARD DE CADASTRO */}
+                        <div className="w-full max-w-xl relative group animate-in zoom-in duration-700">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 to-[#d4ff00] rounded-[3rem] blur-xl opacity-30 group-hover:opacity-50 transition duration-1000"></div>
+                            <div className="relative bg-[#111113] border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl backdrop-blur-3xl form-card-glow">
                                 {!submitted ? (
-                                    <form onSubmit={handleSubmit} className="space-y-10">
-                                        <div className="flex justify-between items-end mb-8">
-                                            <h3 className="text-2xl font-black uppercase tracking-widest italic text-white">Reserva Beta</h3>
-                                            <span className="font-mono text-base font-bold text-[#d4ff00] px-5 py-2 bg-[#d4ff00]/10 rounded-2xl border border-[#d4ff00]/20 italic">
-                                                {100 - stats.registeredCount} VAGAS
+                                    <form onSubmit={handleSubmit} className="space-y-6">
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h3 className="text-lg font-black uppercase tracking-widest italic text-white">RESERVA BETA</h3>
+                                            <span className="font-mono text-xs font-bold text-[#d4ff00] px-3 py-1 bg-[#d4ff00]/10 rounded-lg border border-[#d4ff00]/20">
+                                                {100 - stats.registeredCount} VAGAS LIVRES
                                             </span>
                                         </div>
-                                        <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-                                            <div className="h-full bg-gradient-to-r from-indigo-600 via-blue-500 to-[#d4ff00] transition-all duration-1000" style={{width: `${(stats.registeredCount/100)*100}%`}}></div>
-                                        </div>
-                                        <div className="space-y-6">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em] ml-4">NOME COMPLETO</label>
-                                                <input required placeholder="EX: ANA SILVA" className="w-full bg-white/[0.05] border border-white/10 rounded-3xl px-8 py-6 focus:border-indigo-500 outline-none transition font-black uppercase text-base placeholder:text-gray-800" onChange={e => setFormData({...formData, fullName: e.target.value})} />
+                                        
+                                        <div className="space-y-4">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase text-gray-600 tracking-[0.2em] ml-2">NOME COMPLETO</label>
+                                                <input required placeholder="EX: ANA SILVA" className="w-full bg-white/[0.04] border border-white/10 rounded-2xl px-6 py-4 focus:border-indigo-500 outline-none transition font-bold uppercase text-sm placeholder:text-gray-800" onChange={e => setFormData({...formData, fullName: e.target.value})} />
                                             </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em] ml-4">E-MAIL PROFISSIONAL</label>
-                                                <input required type="email" placeholder="VOCE@EMPRESA.COM" className="w-full bg-white/[0.05] border border-white/10 rounded-3xl px-8 py-6 focus:border-indigo-500 outline-none transition font-black uppercase text-base placeholder:text-gray-800" onChange={e => setFormData({...formData, workEmail: e.target.value})} />
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase text-gray-600 tracking-[0.2em] ml-2">E-MAIL PROFISSIONAL</label>
+                                                <input required type="email" placeholder="VOCE@EMPRESA.COM" className="w-full bg-white/[0.04] border border-white/10 rounded-2xl px-6 py-4 focus:border-indigo-500 outline-none transition font-bold uppercase text-sm placeholder:text-gray-800" onChange={e => setFormData({...formData, workEmail: e.target.value})} />
                                             </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.3em] ml-4">CARGO / FUNÇÃO</label>
-                                                <input required placeholder="EX: HEAD DE INSIGHTS" className="w-full bg-white/[0.05] border border-white/10 rounded-3xl px-8 py-6 focus:border-indigo-500 outline-none transition font-black uppercase text-base placeholder:text-gray-800" onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] font-black uppercase text-gray-600 tracking-[0.2em] ml-2">CARGO / FUNÇÃO</label>
+                                                <input required placeholder="EX: HEAD DE INSIGHTS" className="w-full bg-white/[0.04] border border-white/10 rounded-2xl px-6 py-4 focus:border-indigo-500 outline-none transition font-bold uppercase text-sm placeholder:text-gray-800" onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
                                             </div>
                                         </div>
-                                        {error && <div className="p-5 bg-red-500/10 border border-red-500/20 rounded-3xl text-red-400 text-xs font-black animate-shake text-center uppercase tracking-widest">{error}</div>}
-                                        <button disabled={loading || !user} className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 py-7 rounded-3xl font-black uppercase tracking-[0.3em] text-sm transition-all flex items-center justify-center gap-4 shadow-2xl shadow-indigo-600/40">
-                                            {loading ? <Icon name="Loader2" className="animate-spin" /> : "GARANTIR MEU ACESSO BETA AGORA"}
+
+                                        {error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-black animate-shake text-center uppercase">{error}</div>}
+                                        
+                                        <button disabled={loading || !user} className="w-full bg-indigo-600 hover:bg-indigo-500 py-6 rounded-2xl font-black uppercase tracking-[0.2em] text-xs transition-all flex items-center justify-center gap-3 shadow-xl">
+                                            {loading ? <Icon name="Loader2" className="animate-spin" /> : "QUERO MEU ACESSO BETA"}
                                         </button>
-                                        {!user && <p className="text-[10px] text-center text-[#d4ff00] animate-pulse font-black uppercase tracking-widest italic opacity-60">A estabelecer ligação encriptada com o Firebase...</p>}
+                                        {!user && <p className="text-[9px] text-center text-[#d4ff00] animate-pulse font-black uppercase tracking-widest italic opacity-60 italic">A estabelecer ligação segura...</p>}
                                     </form>
                                 ) : (
-                                    <div className="text-center py-20 animate-in zoom-in duration-700">
-                                        <div className="w-32 h-32 bg-[#d4ff00]/10 rounded-[3.5rem] flex items-center justify-center mx-auto mb-12 border border-[#d4ff00]/20 shadow-2xl shadow-[#d4ff00]/10"><Icon name="Rocket" className="w-16 h-16 text-[#d4ff00]" /></div>
-                                        <h3 className="text-6xl font-black mb-10 uppercase tracking-tighter italic text-white">RESERVA FEITA!</h3>
-                                        <p className="text-gray-400 mb-16 text-2xl leading-relaxed opacity-80">Você está oficialmente no grupo dos 100 pioneiros. Verifique o seu e-mail para as chaves de acesso.</p>
-                                        <button onClick={() => setSubmitted(false)} className="text-[11px] font-black uppercase tracking-[0.5em] text-[#d4ff00] hover:text-white transition bg-white/5 px-14 py-5 rounded-full border border-white/10">Novo cadastro</button>
+                                    <div className="text-center py-10 animate-in zoom-in duration-700">
+                                        <div className="w-24 h-24 bg-[#d4ff00]/10 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8 border border-[#d4ff00]/20 shadow-lg shadow-[#d4ff00]/10"><Icon name="Rocket" className="w-10 h-10 text-[#d4ff00]" /></div>
+                                        <h3 className="text-3xl font-black mb-4 uppercase italic">RESERVA FEITA!</h3>
+                                        <p className="text-gray-400 mb-8 text-lg leading-relaxed">Você está oficialmente no grupo dos 100. Verifique o seu e-mail corporativo em breve.</p>
+                                        <button onClick={() => setSubmitted(false)} className="text-[9px] font-black uppercase tracking-[0.4em] text-[#d4ff00] hover:text-white transition bg-white/5 px-10 py-3 rounded-full border border-white/10">Novo cadastro</button>
                                     </div>
                                 )}
                             </div>
                         </div>
+
+                        {/* Benefícios Rápidos */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-16 w-full max-w-3xl">
+                            <div className="flex gap-4 p-6 rounded-3xl bg-white/[0.02] border border-white/5 items-center">
+                                <Icon name="Search" className="text-indigo-400 w-8 h-8" />
+                                <div><h4 className="font-black italic text-xs uppercase">Trend Radar</h4><p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Insights reais.</p></div>
+                            </div>
+                            <div className="flex gap-4 p-6 rounded-3xl bg-white/[0.02] border border-white/5 items-center">
+                                <Icon name="BarChart3" className="neon-text w-8 h-8" />
+                                <div><h4 className="font-black italic text-xs uppercase">Analytics</h4><p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Conversão estratégica.</p></div>
+                            </div>
+                        </div>
                     </main>
 
-                    <footer className="max-w-7xl mx-auto px-6 mt-48 pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-10">
-                        <p className="text-gray-600 text-[11px] font-black uppercase tracking-[0.5em] italic text-center md:text-left">
+                    <footer className="w-full max-w-7xl px-6 py-12 flex flex-col md:flex-row justify-between items-center gap-6 border-t border-white/5 z-20">
+                        <p className="text-gray-600 text-[10px] font-black uppercase tracking-[0.4em] italic text-center md:text-left">
                             HUB INC COPA É UM PRODUTO <a href="https://www.inconvencional.com.br" target="_blank" className="text-white hover:text-[#d4ff00] underline decoration-indigo-500/50 transition-all">INCONVENCIONAL</a>
                         </p>
-                        <div className="flex items-center gap-10">
-                            <span className="text-[10px] text-gray-800 font-mono tracking-[0.6em] uppercase italic font-bold">Born to Lead 2026</span>
-                            <button onClick={() => { setShowAdmin(true); fetchAdminData(); }} className="p-5 bg-white/5 rounded-3xl border border-white/5 hover:bg-white/10 transition-all group">
-                                <Icon name="Table" className="w-6 h-6 text-gray-700 group-hover:text-indigo-400" />
+                        <div className="flex items-center gap-8">
+                            <span className="text-[10px] text-gray-800 font-mono tracking-widest uppercase italic font-bold">Born to Lead 2026</span>
+                            <button onClick={() => { setShowAdmin(true); fetchAdminData(); }} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all group">
+                                <Icon name="Table" className="w-4 h-4 text-gray-700 group-hover:text-indigo-400" />
                             </button>
                         </div>
                     </footer>
 
+                    {/* Admin Modal */}
                     {showAdmin && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/98 p-6 backdrop-blur-3xl animate-in fade-in duration-300">
-                            <div className="bg-[#161618] border border-white/10 rounded-[4rem] w-full max-w-6xl h-[85vh] flex flex-col relative shadow-2xl overflow-hidden">
-                                <button onClick={() => {setShowAdmin(false); setAdminAuthenticated(false);}} className="absolute top-12 right-12 p-5 bg-white/5 rounded-full text-gray-500 hover:text-white transition z-50"><Icon name="X" className="w-7 h-7" /></button>
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/98 p-4 backdrop-blur-3xl animate-in fade-in duration-300">
+                            <div className="bg-[#161618] border border-white/10 rounded-[3rem] w-full max-w-4xl h-[70vh] flex flex-col relative shadow-2xl overflow-hidden">
+                                <button onClick={() => {setShowAdmin(false); setAdminAuthenticated(false);}} className="absolute top-8 right-8 p-3 bg-white/5 rounded-full text-gray-500 hover:text-white transition z-50"><Icon name="X" className="w-5 h-5" /></button>
                                 {!adminAuthenticated ? (
-                                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center max-w-md mx-auto w-full font-sans">
-                                        <div className="w-24 h-24 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-12 border border-indigo-500/20"><Icon name="Lock" className="w-12 h-12 text-indigo-500" /></div>
-                                        <h2 className="text-4xl font-black mb-10 uppercase italic text-white tracking-tighter">PAINEL ADMIN</h2>
-                                        <input autoFocus type="password" placeholder="SENHA" className="w-full bg-white/5 border border-white/10 rounded-[2rem] px-6 py-8 text-center text-5xl tracking-[0.5em] focus:border-indigo-500 outline-none font-mono mb-10" onKeyDown={e => {if(e.key==='Enter' && e.target.value==='011006Ld!'){setAdminAuthenticated(true); fetchAdminData()}}} />
-                                        <button className="w-full bg-indigo-600 py-7 rounded-[2rem] font-black uppercase text-xs tracking-[0.3em]" onClick={() => {if(document.querySelector('input[type="password"]').value==='011006Ld!'){setAdminAuthenticated(true); fetchAdminData()}}}>ACEDER À BASE DE DADOS</button>
+                                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center max-w-md mx-auto w-full">
+                                        <h2 className="text-2xl font-black mb-10 uppercase italic text-white">PAINEL ADMIN</h2>
+                                        <input autoFocus type="password" placeholder="SENHA" className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-5 text-center text-2xl tracking-[0.5em] focus:border-indigo-500 outline-none font-mono mb-8" onKeyDown={e => {if(e.key==='Enter' && e.target.value==='011006Ld!'){setAdminAuthenticated(true); fetchAdminData()}}} />
+                                        <button className="w-full bg-indigo-600 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest" onClick={() => {if(document.querySelector('input[type="password"]').value==='011006Ld!'){setAdminAuthenticated(true); fetchAdminData()}}}>ACEDER À BASE</button>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col h-full font-sans">
-                                        <div className="p-14 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
-                                            <div className="flex items-center gap-6">
-                                                <div className="w-14 h-14 bg-[#d4ff00]/10 rounded-2xl flex items-center justify-center border border-[#d4ff00]/20"><Icon name="Users" className="text-[#d4ff00] w-7 h-7" /></div>
-                                                <h2 className="text-3xl font-black uppercase italic tracking-tighter">LISTA DE TESTERS</h2>
-                                            </div>
+                                    <div className="flex flex-col h-full">
+                                        <div className="p-10 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+                                            <h2 className="text-xl font-black uppercase italic">LISTA DE TESTERS</h2>
                                             <button onClick={() => {
                                                 const csv = "\uFEFFData,Nome,Email,Cargo\n" + allSignups.map(s => `${s.createdAt?new Date(s.createdAt.seconds*1000).toLocaleDateString():''},"${s.fullName}","${s.workEmail}","${s.jobTitle}"`).join("\n");
                                                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                                                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'hubinc_2026_testers.csv'; a.click();
-                                            }} className="px-12 py-6 bg-indigo-600 text-[11px] font-black uppercase tracking-[0.3em] rounded-3xl flex items-center gap-4 shadow-2xl shadow-indigo-600/40">
-                                                <Icon name="Download" className="w-5 h-5" /> EXPORTAR CSV
+                                                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'hub_testers.csv'; a.click();
+                                            }} className="px-6 py-3 bg-indigo-600 text-[9px] font-black uppercase tracking-widest rounded-xl flex items-center gap-2">
+                                                <Icon name="Download" className="w-3 h-3" /> EXPORTAR
                                             </button>
                                         </div>
-                                        <div className="flex-1 overflow-auto p-14">
-                                            {fetchingAdmin ? <div className="flex justify-center py-20"><Icon name="Loader2" className="animate-spin text-indigo-500 w-20 h-20" /></div> : (
-                                                <div className="overflow-x-auto rounded-[3rem] border border-white/5">
-                                                    <table className="w-full text-left min-w-[800px]">
-                                                        <thead className="bg-white/[0.04]">
-                                                            <tr className="text-gray-500 uppercase text-[11px] font-black tracking-[0.3em] border-b border-white/5">
-                                                                <th className="py-8 px-12 italic">DATA</th>
-                                                                <th className="py-8 px-12 italic">NOME COMPLETO</th>
-                                                                <th className="py-8 px-12 italic">E-MAIL PROFISSIONAL</th>
-                                                                <th className="py-8 px-12 italic">CARGO</th>
+                                        <div className="flex-1 overflow-auto p-10">
+                                            {fetchingAdmin ? <Icon name="Loader2" className="animate-spin text-indigo-500 w-10 h-10 mx-auto mt-20" /> : (
+                                                <table className="w-full text-left min-w-[500px]">
+                                                    <thead className="bg-white/[0.03] text-gray-500 uppercase text-[9px] font-black tracking-widest">
+                                                        <tr><th className="py-5 px-6">NOME</th><th className="py-5 px-6">E-MAIL</th><th className="py-5 px-6">CARGO</th></tr>
+                                                    </thead>
+                                                    <tbody className="text-xs">
+                                                        {allSignups.map(s => (
+                                                            <tr key={s.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
+                                                                <td className="py-5 px-6 font-black uppercase">{s.fullName}</td>
+                                                                <td className="py-5 px-6 neon-text font-bold italic">{s.workEmail}</td>
+                                                                <td className="py-5 px-6 text-gray-400">{s.jobTitle}</td>
                                                             </tr>
-                                                        </thead>
-                                                        <tbody className="text-base font-bold">
-                                                            {allSignups.map(s => (
-                                                                <tr key={s.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
-                                                                    <td className="py-8 px-12 text-gray-500 font-mono text-sm">{s.createdAt ? new Date(s.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : '...'}</td>
-                                                                    <td className="py-8 px-12 uppercase text-white tracking-widest">{s.fullName}</td>
-                                                                    <td className="py-8 px-12 neon-text italic text-sm">{s.workEmail}</td>
-                                                                    <td className="py-8 px-12 text-gray-400 uppercase text-xs tracking-widest">{s.jobTitle}</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                            {allSignups.length === 0 && !fetchingAdmin && (
-                                                <div className="text-center py-20 opacity-30 italic text-xl">Nenhum registo encontrado na base de dados global.</div>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                             )}
                                         </div>
                                     </div>
