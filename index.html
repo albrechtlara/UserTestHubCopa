@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hub Inc Copa 2026 - Beta Registration</title>
+    <title>HUB INC COPA 2026 - Beta Registration</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- React & ReactDOM -->
@@ -13,36 +13,47 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <style>
-        @keyframes shimmer { 100% { transform: translateX(100%); } }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Archivo+Black&display=swap');
+        
+        * { font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        body { 
+            background-color: #0a0a0b; 
+            margin: 0; 
+            overflow-x: hidden; 
+            color: white; 
+        }
+
+        /* ESTILO DA REFERÊNCIA: VERDE NEON, ITÁLICO E IMPACTO */
+        .countdown-number {
+            font-family: 'Archivo Black', sans-serif;
+            font-style: italic;
+            color: #d4ff00; /* Verde Neon */
+            line-height: 0.8;
+            text-shadow: 0 0 40px rgba(212, 255, 0, 0.3);
+        }
+
+        .neon-text {
+            color: #d4ff00;
+            text-shadow: 0 0 10px rgba(212, 255, 0, 0.5);
+        }
+
+        .hero-gradient {
+            background: radial-gradient(circle at top right, rgba(79, 70, 229, 0.15), transparent),
+                        radial-gradient(circle at bottom left, rgba(212, 255, 0, 0.08), transparent);
+        }
+
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-5px); }
             75% { transform: translateX(5px); }
         }
         .animate-shake { animation: shake 0.4s ease-in-out; }
-        body { background-color: #0a0a0b; margin: 0; overflow-x: hidden; color: white; }
-        
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Archivo+Black&display=swap');
-        
-        * { font-family: 'Plus Jakarta Sans', sans-serif; }
-        
-        /* Estilo da Referência: Verde Neon, Itálico e Impacto */
-        .countdown-font {
-            font-family: 'Archivo Black', sans-serif;
-            font-style: italic;
-            color: #d4ff00;
-            text-shadow: 0 0 30px rgba(212, 255, 0, 0.4);
-            line-height: 1;
-        }
 
-        .hero-gradient {
-            background: radial-gradient(circle at top right, rgba(79, 70, 229, 0.12), transparent),
-                        radial-gradient(circle at bottom left, rgba(212, 255, 0, 0.05), transparent);
-        }
-
-        .admin-table-container::-webkit-scrollbar { width: 6px; }
-        .admin-table-container::-webkit-scrollbar-track { background: transparent; }
-        .admin-table-container::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -53,28 +64,38 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Configurações do seu projeto Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBKdG3kMCHcgABiDwBiN8yiGbZIei0huqA",
-            authDomain: "hubinc-copadomundo.firebaseapp.com",
-            projectId: "hubinc-copadomundo",
-            storageBucket: "hubinc-copadomundo.firebasestorage.app",
-            messagingSenderId: "769573290056",
-            appId: "1:769573290056:web:9c678855e269aa0c0bd87d",
-            measurementId: "G-7LYLEWN0WG"
+        // CONFIGURAÇÃO DINÂMICA (Obrigatória para o ambiente Canvas)
+        const getFirebaseConfig = () => {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                return JSON.parse(__firebase_config);
+            }
+            // Fallback para o seu projeto local/GitHub
+            return {
+                apiKey: "AIzaSyBKdG3kMCHcgABiDwBiN8yiGbZIei0huqA",
+                authDomain: "hubinc-copadomundo.firebaseapp.com",
+                projectId: "hubinc-copadomundo",
+                storageBucket: "hubinc-copadomundo.firebasestorage.app",
+                messagingSenderId: "769573290056",
+                appId: "1:769573290056:web:9c678855e269aa0c0bd87d",
+                measurementId: "G-7LYLEWN0WG"
+            };
         };
 
-        let config = firebaseConfig;
-        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-            try { config = JSON.parse(__firebase_config); } catch (e) {}
-        }
-
+        const config = getFirebaseConfig();
         const app = initializeApp(config);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        const currentAppId = typeof __app_id !== 'undefined' ? __app_id : 'hub-inc-copa-beta';
+        
+        // Identificadores de ambiente
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'hub-inc-copa-beta';
+        const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-        window.firebaseApp = { auth, db, currentAppId, signInAnonymously, signInWithCustomToken, onAuthStateChanged, doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp, setDoc };
+        // Exportar para o escopo global do React
+        window.fb = { 
+            auth, db, appId, initialToken, 
+            signInAnonymously, signInWithCustomToken, onAuthStateChanged, 
+            doc, collection, getDocs, onSnapshot, runTransaction, serverTimestamp, setDoc 
+        };
     </script>
 
     <script type="text/babel">
@@ -88,15 +109,12 @@
                 BarChart3: <><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></>,
                 Lock: <><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>,
                 Rocket: <><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.71-2.13.09-2.91a2.18 2.18 0 0 0-3.09-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-5c1.62-2.2 5-3 5-3"/><path d="M12 15v5s3.03-.55 5-2c2.2-1.62 3-5 3-5"/></>,
-                AlertCircle: <><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></>,
                 Loader2: <path d="M21 12a9 9 0 1 1-6.21-8.58"/>,
-                CheckCircle2: <><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></>,
+                Trophy: <><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></>,
+                X: <><path d="M18 6 6 18"/><path d="M6 6l12 12"/></>,
                 Table: <><path d="M3 3h18v18H3z"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M9 3v18"/><path d="M15 3v18"/></>,
                 Download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></>,
-                X: <><path d="M18 6 6 18"/><path d="M6 6l12 12"/></>,
-                KeyRound: <><path d="M2 18v3c0 .6.4 1 1 1h4v-3h3v-3h2l1.4-1.4c.9.9 2.1 1.4 3.6 1.4a5 5 0 1 0-5-5c0 1.5.5 2.7 1.4 3.6L2 18z"/><circle cx="17" cy="8" r="1"/></>,
-                ChevronRight: <path d="m9 18 6-6-6-6"/>,
-                Trophy: <><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></>
+                ChevronRight: <path d="m9 18 6-6-6-6"/>
             };
             return (
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -109,47 +127,41 @@
             const calculateTimeLeft = () => {
                 const worldCupDate = new Date('June 11, 2026 00:00:00').getTime();
                 const now = new Date().getTime();
-                const difference = worldCupDate - now;
-                let timeLeft = { dias: 0, hrs: 0, min: 0, seg: 0 };
-                if (difference > 0) {
-                    timeLeft = {
-                        dias: Math.floor(difference / (1000 * 60 * 60 * 24)),
-                        hrs: Math.floor((difference / (1000 * 60 * 60)) % 24),
-                        min: Math.floor((difference / 1000 / 60) % 60),
-                        seg: Math.floor((difference / 1000) % 60),
-                    };
-                }
-                return timeLeft;
+                const diff = worldCupDate - now;
+                if (diff <= 0) return { dias: 0, hrs: 0, min: 0, seg: 0 };
+                return {
+                    dias: Math.floor(diff / (1000 * 60 * 60 * 24)),
+                    hrs: Math.floor((diff / (1000 * 60 * 60)) % 24),
+                    min: Math.floor((diff / 1000 / 60) % 60),
+                    seg: Math.floor((diff / 1000) % 60)
+                };
             };
-
             const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
-
             useEffect(() => {
                 const timer = setInterval(() => setTimeLeft(calculateTimeLeft()), 1000);
                 return () => clearInterval(timer);
             }, []);
-
             return (
                 <div className="flex flex-col items-center">
-                    <div className="flex items-center gap-2 mb-4">
-                        <Icon name="Trophy" className="w-4 h-4 text-yellow-500" />
-                        <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-gray-500">A Copa do Mundo FIFA 2026 começa em</span>
+                    <div className="flex items-center gap-2 mb-8 animate-pulse">
+                        <Icon name="Trophy" className="w-5 h-5 text-yellow-500" />
+                        <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] text-gray-500 font-sans">Contagem Regressiva 2026</span>
                     </div>
-                    <div className="flex gap-4 md:gap-10">
+                    <div className="flex gap-4 md:gap-12">
                         {Object.entries(timeLeft).map(([unit, value]) => (
                             <div key={unit} className="flex flex-col items-center">
-                                <span className="countdown-font text-5xl md:text-7xl lg:text-9xl">
+                                <span className="countdown-number text-6xl md:text-8xl lg:text-[10rem]">
                                     {String(value).padStart(2, '0')}
                                 </span>
-                                <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-gray-600 mt-4">{unit}</span>
+                                <span className="text-[10px] md:text-xs font-black uppercase tracking-[0.4em] text-gray-600 mt-6 font-sans">{unit}</span>
                             </div>
                         ))}
                     </div>
-                    <div className="mt-8 flex gap-6 text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-[0.3em] bg-white/5 px-8 py-3 rounded-full border border-white/5 italic">
+                    <div className="mt-12 flex flex-wrap justify-center gap-4 text-[10px] font-bold text-gray-400 uppercase tracking-[0.3em] bg-white/5 px-8 py-3 rounded-full border border-white/5 italic font-sans">
                         <span>EUA ★ CANADÁ ★ MÉXICO</span>
-                        <span className="text-indigo-500">|</span>
+                        <span className="hidden md:inline text-indigo-500">|</span>
                         <span>48 SELEÇÕES</span>
-                        <span className="text-indigo-500">|</span>
+                        <span className="hidden md:inline text-indigo-500">|</span>
                         <span>104 JOGOS</span>
                     </div>
                 </div>
@@ -157,7 +169,7 @@
         };
 
         function App() {
-            const fb = window.firebaseApp;
+            const fb = window.fb;
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(false);
             const [submitted, setSubmitted] = useState(false);
@@ -165,8 +177,6 @@
             const [stats, setStats] = useState({ registeredCount: 0 });
             const [showAdmin, setShowAdmin] = useState(false);
             const [adminAuthenticated, setAdminAuthenticated] = useState(false);
-            const [adminPassInput, setAdminPassInput] = useState('');
-            const [adminError, setAdminError] = useState('');
             const [allSignups, setAllSignups] = useState([]);
             const [fetchingAdmin, setFetchingAdmin] = useState(false);
             const [formData, setFormData] = useState({ fullName: '', workEmail: '', jobTitle: '' });
@@ -178,12 +188,16 @@
                 if (!fb) return;
                 const initAuth = async () => {
                     try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await fb.signInWithCustomToken(fb.auth, __initial_auth_token);
+                        // REGRA 3: Autenticação antes de qualquer query
+                        if (fb.initialToken) {
+                            await fb.signInWithCustomToken(fb.auth, fb.initialToken);
                         } else {
                             await fb.signInAnonymously(fb.auth);
                         }
-                    } catch (err) { console.error("Auth Fail:", err); }
+                    } catch (err) {
+                        console.error("Auth Error:", err);
+                        setError("Erro de autenticação segura.");
+                    }
                 };
                 initAuth();
                 const unsubscribe = fb.onAuthStateChanged(fb.auth, setUser);
@@ -192,101 +206,94 @@
 
             useEffect(() => {
                 if (!user || !fb) return;
-                const statsRef = fb.doc(fb.db, 'artifacts', fb.currentAppId, 'public', 'data', 'stats', 'beta_counter');
+                // REGRA 1: Caminho estrito de dados
+                const statsRef = fb.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'stats', 'beta_counter');
                 const unsubscribe = fb.onSnapshot(statsRef, (docSnap) => {
                     if (docSnap.exists()) setStats(docSnap.data());
-                }, (err) => console.error("Snapshot Stats Error:", err));
+                });
                 return () => unsubscribe();
             }, [user, fb]);
 
             const fetchAdminData = async () => {
                 if (!user || !fb) return;
                 setFetchingAdmin(true);
-                setAdminError('');
                 try {
-                    const signupsCol = fb.collection(fb.db, 'artifacts', fb.currentAppId, 'public', 'data', 'signups');
+                    const signupsCol = fb.collection(fb.db, 'artifacts', fb.appId, 'public', 'data', 'signups');
                     const snapshot = await fb.getDocs(signupsCol);
-                    if (snapshot.empty) {
-                        setAllSignups([]);
-                    } else {
-                        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-                        setAllSignups(data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
-                    }
-                } catch (err) {
-                    console.error("Admin Fetch Error:", err);
-                    setAdminError("Erro de acesso. Verifique as 'Rules' do seu Firestore.");
-                }
+                    const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setAllSignups(data.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)));
+                } catch (err) { console.error(err); }
                 setFetchingAdmin(false);
             };
 
             const handleSubmit = async (e) => {
                 e.preventDefault();
-                setError('');
-                if (!user) { setError("Aguardando autenticação segura..."); return; }
+                if (!user) { setError("Aguarde a autenticação para continuar."); return; }
                 setLoading(true);
+                setError('');
                 try {
-                    const signupsCol = fb.collection(fb.db, 'artifacts', fb.currentAppId, 'public', 'data', 'signups');
-                    const statsRef = fb.doc(fb.db, 'artifacts', fb.currentAppId, 'public', 'data', 'stats', 'beta_counter');
+                    const statsRef = fb.doc(fb.db, 'artifacts', fb.appId, 'public', 'data', 'stats', 'beta_counter');
+                    const signupsCol = fb.collection(fb.db, 'artifacts', fb.appId, 'public', 'data', 'signups');
 
-                    // Check duplicate first
                     const snap = await fb.getDocs(signupsCol);
                     const isDuplicate = snap.docs.some(d => d.data().workEmail.toLowerCase() === formData.workEmail.toLowerCase());
 
                     await fb.runTransaction(fb.db, async (transaction) => {
                         const statsDoc = await transaction.get(statsRef);
                         const currentCount = statsDoc.exists() ? statsDoc.data().registeredCount : 0;
-                        if (currentCount >= TOTAL_SPOTS && !isDuplicate) throw new Error("Vagas 100% preenchidas.");
+                        if (currentCount >= 100 && !isDuplicate) throw new Error("As 100 vagas foram preenchidas.");
                         
-                        const newSignupRef = fb.doc(fb.collection(fb.db, 'artifacts', fb.currentAppId, 'public', 'data', 'signups'));
-                        transaction.set(newSignupRef, { ...formData, workEmail: formData.workEmail.toLowerCase(), createdAt: fb.serverTimestamp(), isNewTester: !isDuplicate });
-                        if (!isDuplicate) transaction.set(statsRef, { registeredCount: currentCount + 1 }, { merge: true });
+                        const newDocRef = fb.doc(signupsCol);
+                        transaction.set(newDocRef, { 
+                            ...formData, 
+                            workEmail: formData.workEmail.toLowerCase(), 
+                            createdAt: fb.serverTimestamp(), 
+                            isNewTester: !isDuplicate 
+                        });
+                        
+                        if (!isDuplicate) {
+                            transaction.set(statsRef, { registeredCount: currentCount + 1 }, { merge: true });
+                        }
                     });
                     setSubmitted(true);
-                } catch (err) { setError(err.message || 'Erro ao salvar. Verifique as regras do banco.'); }
+                } catch (err) { setError(err.message); }
                 setLoading(false);
             };
 
             return (
-                <div className="min-h-screen text-white selection:bg-[#d4ff00]/30 hero-gradient">
-                    {/* Header Massive com Countdown Neon */}
-                    <header className="relative z-20 pt-20 pb-24 px-6 text-center border-b border-white/5 bg-[#0a0a0b]/40 backdrop-blur-xl">
+                <div className="min-h-screen text-white selection:bg-[#d4ff00]/30 hero-gradient pb-20">
+                    <header className="relative z-20 pt-16 pb-20 px-6 text-center border-b border-white/5 bg-[#0a0a0b]/60 backdrop-blur-xl">
                         <div className="max-w-7xl mx-auto flex flex-col items-center">
-                            <div className="flex items-center gap-4 mb-16 animate-in fade-in duration-1000">
-                                <div className="w-16 h-16 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-[1.25rem] flex items-center justify-center shadow-2xl shadow-indigo-500/40">
-                                    <Icon name="Zap" className="w-10 h-10 text-white fill-white" />
+                            <div className="flex items-center gap-4 mb-16">
+                                <div className="w-14 h-14 bg-gradient-to-tr from-indigo-600 to-blue-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/40">
+                                    <Icon name="Zap" className="w-8 h-8 text-white fill-white" />
                                 </div>
                                 <div className="text-left">
-                                    <h1 className="text-3xl font-black tracking-tighter uppercase leading-none block italic">Hub Inc Copa</h1>
-                                    <span className="text-[#d4ff00] font-black tracking-[0.4em] text-[10px] uppercase">World Cup 2026 Experience</span>
+                                    <h1 className="text-3xl font-black tracking-tighter uppercase leading-none italic font-sans">HUB INC COPA</h1>
+                                    <span className="neon-text font-black tracking-[0.4em] text-[10px] uppercase font-sans">Experience 2026</span>
                                 </div>
                             </div>
                             <Countdown />
                         </div>
                     </header>
 
-                    <main className="relative z-10 max-w-7xl mx-auto px-6 pt-24 pb-32 grid lg:grid-cols-2 gap-20 items-center">
+                    <main className="max-w-7xl mx-auto px-6 pt-24 grid lg:grid-cols-2 gap-20 items-center">
                         <div className="animate-in fade-in slide-in-from-left duration-1000">
-                            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-indigo-400 text-[10px] font-black uppercase tracking-widest mb-10">
-                                <Icon name="Users" className="w-3.5 h-3.5" /> Acesso Beta Pioneiro
-                            </div>
-                            <h2 className="text-6xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-12">
-                                Domine a maior <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-blue-500 to-[#d4ff00] italic">Copa da história.</span>
+                            <h2 className="text-6xl lg:text-8xl font-black tracking-tighter leading-[0.85] mb-12 italic font-sans">
+                                DOMINE A MAIOR <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-blue-500 to-[#d4ff00]">COPA DO MUNDO.</span>
                             </h2>
-                            <p className="text-xl text-gray-400 mb-14 leading-relaxed max-w-lg font-medium">
-                                Estamos abrindo o cofre. Apenas **100 líderes** terão acesso à plataforma de consumer & insight content que vai ditar o ritmo de 2026.
+                            <p className="text-xl text-gray-400 mb-14 leading-relaxed max-w-lg font-medium font-sans">
+                                Estamos a libertar o acesso para apenas **100 líderes**. A plataforma definitiva de consumer e insight content para o maior evento do planeta.
                             </p>
-                            
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 hover:border-indigo-500/30 transition-all group">
-                                    <Icon name="Search" className="text-indigo-400 w-12 h-12 mb-6 group-hover:scale-110 transition-transform" />
-                                    <h4 className="font-black text-xl mb-3 italic">Trend Radar 2026</h4>
-                                    <p className="text-sm text-gray-500 leading-relaxed">Capture tendências globais de consumo antes mesmo do apito inicial.</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 font-sans">
+                                <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex gap-4 transition-all hover:border-indigo-500/30">
+                                    <Icon name="Search" className="text-indigo-400 w-10 h-10 shrink-0" />
+                                    <div><h4 className="font-black italic text-white">Trend Radar</h4><p className="text-xs text-gray-500 uppercase tracking-widest font-bold mt-1">Insights em tempo real.</p></div>
                                 </div>
-                                <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 hover:border-[#d4ff00]/30 transition-all group">
-                                    <Icon name="BarChart3" className="text-[#d4ff00] w-12 h-12 mb-6 group-hover:scale-110 transition-transform" />
-                                    <h4 className="font-black text-xl mb-3 italic">Data Strategy</h4>
-                                    <p className="text-sm text-gray-500 leading-relaxed">Dados comportamentais transformados em estratégia pura de conversão.</p>
+                                <div className="p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex gap-4 transition-all hover:border-[#d4ff00]/30">
+                                    <Icon name="BarChart3" className="neon-text w-10 h-10 shrink-0" />
+                                    <div><h4 className="font-black italic text-white">Analytics</h4><p className="text-xs text-gray-500 uppercase tracking-widest font-bold mt-1">Dados que convertem.</p></div>
                                 </div>
                             </div>
                         </div>
@@ -295,48 +302,39 @@
                             <div className="absolute -inset-1 bg-gradient-to-r from-indigo-600 to-[#d4ff00] rounded-[3.5rem] blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
                             <div className="relative bg-[#111113]/90 border border-white/10 rounded-[3rem] p-12 lg:p-16 shadow-2xl backdrop-blur-2xl">
                                 {!submitted ? (
-                                    <form onSubmit={handleSubmit} className="space-y-8">
-                                        <div>
-                                            <div className="flex justify-between items-end mb-5">
-                                                <h3 className="text-xl font-black uppercase tracking-widest text-white italic">Reserva de Beta</h3>
-                                                <span className="font-mono text-sm font-bold text-[#d4ff00] px-3 py-1 bg-[#d4ff00]/10 rounded-lg">{TOTAL_SPOTS - stats.registeredCount} VAGAS</span>
-                                            </div>
-                                            <div className="h-3 bg-white/5 rounded-full overflow-hidden">
-                                                <div className="h-full bg-gradient-to-r from-indigo-600 via-blue-500 to-[#d4ff00] transition-all duration-1000" style={{width: `${(stats.registeredCount/TOTAL_SPOTS)*100}%`}}></div>
-                                            </div>
+                                    <form onSubmit={handleSubmit} className="space-y-8 font-sans">
+                                        <div className="flex justify-between items-end mb-5">
+                                            <h3 className="text-xl font-black uppercase tracking-widest italic text-white">Reserva de Beta</h3>
+                                            <span className="font-mono text-sm font-bold text-[#d4ff00] px-3 py-1 bg-[#d4ff00]/10 rounded-lg">{100 - stats.registeredCount} VAGAS</span>
                                         </div>
-                                        
+                                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                                            <div className="h-full bg-gradient-to-r from-indigo-600 via-blue-500 to-[#d4ff00] transition-all duration-1000" style={{width: `${(stats.registeredCount/100)*100}%`}}></div>
+                                        </div>
                                         <div className="space-y-5">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-2">Nome Completo</label>
-                                                <input required placeholder="Ana Silva" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-5 focus:border-indigo-500 outline-none transition font-bold" onChange={e => setFormData({...formData, fullName: e.target.value})} />
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-2">NOME COMPLETO</label>
+                                                <input required placeholder="EX: ANA SILVA" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-5 focus:border-indigo-500 outline-none transition font-bold uppercase text-sm placeholder:text-gray-700" onChange={e => setFormData({...formData, fullName: e.target.value})} />
                                             </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-2">E-mail Profissional</label>
-                                                <input required type="email" placeholder="voce@empresa.com" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-5 focus:border-indigo-500 outline-none transition font-bold" onChange={e => setFormData({...formData, workEmail: e.target.value})} />
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-2">E-MAIL PROFISSIONAL</label>
+                                                <input required type="email" placeholder="VOCE@EMPRESA.COM" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-5 focus:border-indigo-500 outline-none transition font-bold uppercase text-sm placeholder:text-gray-700" onChange={e => setFormData({...formData, workEmail: e.target.value})} />
                                             </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-2">Cargo / Função</label>
-                                                <input required placeholder="Ex: Head de Marketing" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-5 focus:border-indigo-500 outline-none transition font-bold" onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-black uppercase text-gray-500 tracking-[0.2em] ml-2">CARGO / FUNÇÃO</label>
+                                                <input required placeholder="EX: HEAD DE MARKETING" className="w-full bg-white/[0.03] border border-white/10 rounded-2xl px-6 py-5 focus:border-indigo-500 outline-none transition font-bold uppercase text-sm placeholder:text-gray-700" onChange={e => setFormData({...formData, jobTitle: e.target.value})} />
                                             </div>
                                         </div>
-                                        
-                                        {error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-xs font-black animate-shake text-center">{error}</div>}
-                                        
-                                        <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 py-6 rounded-2xl font-black uppercase tracking-[0.3em] text-xs transition-all flex items-center justify-center gap-3 shadow-xl shadow-indigo-600/20">
-                                            {loading ? <Icon name="Loader2" className="animate-spin" /> : "Garantir meu acesso beta agora"}
+                                        {error && <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 text-xs font-black animate-shake text-center uppercase tracking-widest">{error}</div>}
+                                        <button disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-500 py-6 rounded-2xl font-black uppercase tracking-[0.3em] text-xs transition-all flex items-center justify-center gap-3">
+                                            {loading ? <Icon name="Loader2" className="animate-spin" /> : "GARANTIR MEU ACESSO BETA AGORA"}
                                         </button>
-                                        <p className="text-[10px] text-center text-gray-600 font-bold uppercase tracking-widest"><Icon name="Lock" className="w-3 h-3 inline mr-1" /> Segurança de Dados Inconvencional</p>
+                                        {!user && <p className="text-[10px] text-center text-[#d4ff00] animate-pulse font-black uppercase tracking-widest italic">A autenticar...</p>}
                                     </form>
                                 ) : (
-                                    <div className="text-center py-24 animate-in zoom-in duration-700">
-                                        <div className="w-28 h-28 bg-[#d4ff00]/10 rounded-[3rem] flex items-center justify-center mx-auto mb-10 border border-[#d4ff00]/20 shadow-2xl shadow-[#d4ff00]/10">
-                                            <Icon name="Rocket" className="w-14 h-14 text-[#d4ff00]" />
-                                        </div>
-                                        <h3 className="text-5xl font-black mb-6 uppercase tracking-tighter italic">Bem-vindo ao Time!</h3>
-                                        <p className="text-gray-400 mb-14 text-xl leading-relaxed px-4">
-                                            Reserva confirmada. Você está na lista oficial. Verifique seu e-mail **{formData.workEmail}** para o próximo passo.
-                                        </p>
+                                    <div className="text-center py-20 animate-in zoom-in duration-700 font-sans">
+                                        <div className="w-28 h-28 bg-[#d4ff00]/10 rounded-[3rem] flex items-center justify-center mx-auto mb-10 border border-[#d4ff00]/20 shadow-2xl shadow-[#d4ff00]/10"><Icon name="Rocket" className="w-14 h-14 text-[#d4ff00]" /></div>
+                                        <h3 className="text-5xl font-black mb-6 uppercase tracking-tighter italic text-white">BEM-VINDO!</h3>
+                                        <p className="text-gray-400 mb-14 text-xl leading-relaxed">Reserva feita com sucesso. Verifique seu e-mail corporativo para o próximo passo estratégico.</p>
                                         <button onClick={() => setSubmitted(false)} className="text-[10px] font-black uppercase tracking-[0.4em] text-[#d4ff00] hover:text-white transition bg-white/5 px-10 py-4 rounded-full border border-white/5">Fazer novo cadastro</button>
                                     </div>
                                 )}
@@ -344,99 +342,57 @@
                         </div>
                     </main>
 
-                    <footer className="relative z-10 border-t border-white/5 py-16 px-6 bg-[#0a0a0b]/80">
-                        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-10">
-                            <div className="flex flex-col items-center md:items-start text-center md:text-left">
-                                <p className="text-gray-500 text-xs font-black uppercase tracking-[0.3em] mb-2 italic">Hub Inc Copa do Mundo 2026</p>
-                                <p className="text-gray-600 text-[10px] font-bold">Desenvolvido com visão estratégica pela <a href="https://www.inconvencional.com.br" target="_blank" className="text-white hover:text-[#d4ff00] transition-colors underline decoration-indigo-500/30">Inconvencional</a></p>
-                            </div>
-                            <div className="flex items-center gap-8">
-                                <span className="text-[9px] text-gray-800 font-mono tracking-[0.5em] uppercase font-bold">Born to Lead 2026</span>
-                                <button onClick={() => setShowAdmin(true)} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all group">
-                                    <Icon name="Table" className="w-5 h-5 text-gray-700 group-hover:text-indigo-400" />
-                                </button>
-                            </div>
+                    <footer className="max-w-7xl mx-auto px-6 mt-32 pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8 font-sans">
+                        <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] italic text-center md:text-left">
+                            O HUB INC COPA É UM PRODUTO <a href="https://www.inconvencional.com.br" target="_blank" className="text-white hover:text-[#d4ff00] underline">INCONVENCIONAL</a>
+                        </p>
+                        <div className="flex items-center gap-6">
+                            <span className="text-[10px] text-gray-700 font-mono tracking-widest uppercase">Data Driven Hub 2026</span>
+                            <button onClick={() => { setShowAdmin(true); fetchAdminData(); }} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-all group">
+                                <Icon name="Table" className="w-5 h-5 text-gray-700 group-hover:text-indigo-400" />
+                            </button>
                         </div>
                     </footer>
 
                     {showAdmin && (
                         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/98 p-4 backdrop-blur-3xl animate-in fade-in duration-300">
-                            <div className="bg-[#161618] border border-white/10 rounded-[3.5rem] w-full max-w-6xl h-full max-h-[90vh] flex flex-col relative overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)]">
-                                <button onClick={() => {setShowAdmin(false); setAdminAuthenticated(false); setAdminPassInput(''); setAdminError('')}} className="absolute top-10 right-10 p-4 bg-white/5 rounded-full text-gray-500 hover:text-white z-20 transition-all"><Icon name="X" className="w-6 h-6" /></button>
-                                
+                            <div className="bg-[#161618] border border-white/10 rounded-[3rem] w-full max-w-5xl h-[80vh] flex flex-col relative shadow-2xl">
+                                <button onClick={() => {setShowAdmin(false); setAdminAuthenticated(false);}} className="absolute top-10 right-10 p-4 bg-white/5 rounded-full text-gray-500 hover:text-white transition"><Icon name="X" className="w-6 h-6" /></button>
                                 {!adminAuthenticated ? (
-                                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center max-w-md mx-auto">
-                                        <div className="w-24 h-24 bg-indigo-500/10 rounded-[2rem] flex items-center justify-center mb-10 border border-indigo-500/20"><Icon name="KeyRound" className="text-indigo-500 w-12 h-12" /></div>
-                                        <h2 className="text-3xl font-black mb-10 uppercase tracking-tight italic">Painel de Controle</h2>
-                                        <form className="w-full space-y-6" onSubmit={e => {
-                                            e.preventDefault();
-                                            if(adminPassInput === ADMIN_PASSWORD) {
-                                                setAdminAuthenticated(true);
-                                                fetchAdminData();
-                                            } else setAdminError('Senha mestra inválida.');
-                                        }}>
-                                            <input autoFocus type="password" placeholder="••••••••" className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] px-4 py-8 text-center text-5xl tracking-[0.5em] focus:border-indigo-500 outline-none font-mono" value={adminPassInput} onChange={e => setAdminPassInput(e.target.value)} />
-                                            {adminError && <p className="text-red-400 text-[10px] font-black uppercase tracking-widest">{adminError}</p>}
-                                            <button className="w-full bg-indigo-600 hover:bg-indigo-500 py-6 rounded-[1.5rem] font-black uppercase tracking-[0.3em] text-xs transition-all shadow-xl shadow-indigo-600/20">Aceder à Base</button>
-                                        </form>
+                                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center max-w-md mx-auto w-full font-sans">
+                                        <h2 className="text-3xl font-black mb-10 uppercase italic text-white tracking-tighter">PAINEL ADMIN</h2>
+                                        <input autoFocus type="password" placeholder="SENHA" className="w-full bg-white/5 border border-white/10 rounded-[1.5rem] px-4 py-6 text-center text-3xl tracking-[0.5em] focus:border-indigo-500 outline-none font-mono mb-6" onKeyDown={e => {if(e.key==='Enter' && e.target.value===ADMIN_PASSWORD){setAdminAuthenticated(true); fetchAdminData()}}} />
+                                        <button className="w-full bg-indigo-600 py-6 rounded-[1.5rem] font-black uppercase text-xs tracking-widest" onClick={() => {if(document.querySelector('input[type="password"]').value===ADMIN_PASSWORD){setAdminAuthenticated(true); fetchAdminData()}}}>ACEDER À BASE</button>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col h-full">
+                                    <div className="flex flex-col h-full font-sans">
                                         <div className="p-12 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 bg-[#d4ff00]/10 rounded-xl flex items-center justify-center border border-[#d4ff00]/20"><Icon name="Users" className="text-[#d4ff00] w-6 h-6" /></div>
-                                                <h2 className="text-3xl font-black uppercase tracking-tight italic">Testers Registados</h2>
-                                            </div>
-                                            {allSignups.length > 0 && (
-                                                <button onClick={() => {
-                                                    const csv = "Nome,Email,Cargo\n" + allSignups.map(s => `"${s.fullName}","${s.workEmail}","${s.jobTitle}"`).join("\n");
-                                                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                                                    const url = window.URL.createObjectURL(blob);
-                                                    const a = document.createElement('a');
-                                                    a.setAttribute('href', url);
-                                                    a.setAttribute('download', 'hub_inc_testers_2026.csv');
-                                                    a.click();
-                                                }} className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-[10px] font-black uppercase tracking-[0.3em] rounded-2xl flex items-center gap-3 transition-all shadow-xl shadow-indigo-600/20">
-                                                    <Icon name="Download" className="w-4 h-4" /> Exportar CSV
-                                                </button>
-                                            )}
+                                            <h2 className="text-2xl font-black uppercase italic tracking-tighter">LISTA DE TESTERS</h2>
+                                            <button onClick={() => {
+                                                const csv = "Data,Nome,Email,Cargo\n" + allSignups.map(s => `${s.createdAt?new Date(s.createdAt.seconds*1000).toLocaleDateString():''},"${s.fullName}","${s.workEmail}","${s.jobTitle}"`).join("\n");
+                                                const blob = new Blob([csv], { type: 'text/csv' });
+                                                const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'testers.csv'; a.click();
+                                            }} className="px-8 py-4 bg-indigo-600 text-[10px] font-black uppercase tracking-widest rounded-2xl flex items-center gap-3 shadow-lg shadow-indigo-600/20">
+                                                <Icon name="Download" className="w-4 h-4" /> EXPORTAR CSV
+                                            </button>
                                         </div>
-                                        <div className="flex-1 overflow-auto p-12 admin-table-container">
-                                            {fetchingAdmin ? (
-                                                <div className="flex flex-col items-center justify-center h-full gap-6">
-                                                    <Loader2 className="animate-spin text-[#d4ff00] w-16 h-16" />
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.5em] text-gray-600 animate-pulse italic">A carregar banco de dados...</span>
-                                                </div>
-                                            ) : adminError ? (
-                                                <div className="text-center py-20 text-red-400 font-black uppercase tracking-widest border border-red-500/20 rounded-3xl bg-red-500/5">{adminError}</div>
-                                            ) : allSignups.length > 0 ? (
-                                                <div className="overflow-x-auto rounded-[2rem] border border-white/5">
-                                                    <table className="w-full text-left min-w-[800px]">
-                                                        <thead>
-                                                            <tr className="bg-white/[0.03] text-gray-500 uppercase text-[10px] font-black tracking-[0.2em]">
-                                                                <th className="py-6 px-8">Data de Registo</th>
-                                                                <th className="py-6 px-8">Nome Completo</th>
-                                                                <th className="py-6 px-8">E-mail Profissional</th>
-                                                                <th className="py-6 px-8">Cargo / Função</th>
+                                        <div className="flex-1 overflow-auto p-12">
+                                            {fetchingAdmin ? <div className="flex justify-center py-20"><Icon name="Loader2" className="animate-spin text-indigo-500 w-12 h-12" /></div> : (
+                                                <table className="w-full text-left min-w-[600px]">
+                                                    <thead className="text-gray-500 uppercase text-[10px] font-black tracking-widest border-b border-white/5">
+                                                        <tr><th className="py-6 px-8">DATA</th><th className="py-6 px-8">NOME</th><th className="py-6 px-8">E-MAIL</th><th className="py-6 px-8">CARGO</th></tr>
+                                                    </thead>
+                                                    <tbody className="text-sm italic">
+                                                        {allSignups.map(s => (
+                                                            <tr key={s.id} className="border-b border-white/[0.02] hover:bg-white/[0.01]">
+                                                                <td className="py-6 px-8 text-gray-500 font-mono text-xs">{s.createdAt ? new Date(s.createdAt.seconds * 1000).toLocaleDateString('pt-BR') : '...'}</td>
+                                                                <td className="py-6 px-8 font-black uppercase text-white tracking-widest">{s.fullName}</td>
+                                                                <td className="py-6 px-8 neon-text font-bold">{s.workEmail}</td>
+                                                                <td className="py-6 px-8 text-gray-400">{s.jobTitle}</td>
                                                             </tr>
-                                                        </thead>
-                                                        <tbody className="text-sm">
-                                                            {allSignups.map(s => (
-                                                                <tr key={s.id} className="border-b border-white/[0.02] hover:bg-white/[0.01] transition-colors">
-                                                                    <td className="py-7 px-8 text-gray-600 font-mono text-xs">{s.createdAt ? new Date(s.createdAt.seconds * 1000).toLocaleString('pt-BR') : 'A processar...'}</td>
-                                                                    <td className="py-7 px-8 font-black uppercase text-[11px] tracking-widest">{s.fullName}</td>
-                                                                    <td className="py-7 px-8 text-indigo-400 font-bold">{s.workEmail}</td>
-                                                                    <td className="py-7 px-8 text-gray-400 italic">{s.jobTitle}</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            ) : (
-                                                <div className="h-full flex flex-col items-center justify-center text-center py-20 opacity-30 grayscale">
-                                                    <Icon name="Search" className="w-20 h-20 text-gray-600 mb-8" />
-                                                    <p className="text-gray-500 font-black uppercase tracking-[0.5em] text-xs">Nenhum registo encontrado</p>
-                                                </div>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
                                             )}
                                         </div>
                                     </div>
@@ -448,8 +404,8 @@
             );
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<App />);
     </script>
 </body>
 </html>
